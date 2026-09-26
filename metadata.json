@@ -1,0 +1,6 @@
+{
+  "name": "BrandForge Studio - Autonomous Brand, Logo & Video Production",
+  "description": "Commercial production studio for logo design, brand kits, sales strategies, multi-track timeline editing, and social video ads.",
+  "requestFramePermissions": ["CAMERA", "MICROPHONE"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,186 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    background-color: #0a0a0a;
+    color: #f0f0f0;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    margin: 0;
+  }
+
+  ::selection {
+    background-color: #ff3b00;
+    color: #000000;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%) skewX(-12deg);
+  }
+  100% {
+    transform: translateX(200%) skewX(-12deg);
+  }
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.25s ease-out forwards;
+}
+
+/* --- LOGO ANIMATION PRESETS --- */
+@keyframes presetFadeIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.82);
+    filter: blur(8px);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.04);
+    filter: blur(0px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0px);
+  }
+}
+
+@keyframes presetElasticBounce {
+  0% {
+    transform: translateY(-80px) scale(0.9, 1.1);
+    opacity: 0;
+  }
+  40% {
+    transform: translateY(0px) scale(1.2, 0.8);
+    opacity: 1;
+  }
+  60% {
+    transform: translateY(-24px) scale(0.95, 1.05);
+  }
+  75% {
+    transform: translateY(0px) scale(1.08, 0.92);
+  }
+  88% {
+    transform: translateY(-8px) scale(0.98, 1.02);
+  }
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+}
+
+@keyframes presetOrbitSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes presetPulseBreathe {
+  0%, 100% {
+    transform: scale(0.96);
+    filter: brightness(0.95) drop-shadow(0 0 10px rgba(255, 59, 0, 0.2));
+  }
+  50% {
+    transform: scale(1.08);
+    filter: brightness(1.2) drop-shadow(0 0 35px rgba(255, 59, 0, 0.7));
+  }
+}
+
+@keyframes presetGlitchScan {
+  0%, 100% {
+    transform: translate(0, 0);
+    filter: none;
+  }
+  15% {
+    transform: translate(-4px, 2px);
+    filter: drop-shadow(-3px 0 #00ffff) drop-shadow(3px 0 #ff0055);
+  }
+  30% {
+    transform: translate(3px, -2px);
+    filter: drop-shadow(3px 0 #00ffff) drop-shadow(-3px 0 #ff0055);
+  }
+  45% {
+    transform: translate(0, 0);
+    filter: none;
+  }
+  70% {
+    transform: translate(-2px, -2px);
+    filter: drop-shadow(-2px 0 #00ffcc) drop-shadow(2px 0 #ff3b00);
+  }
+  85% {
+    transform: translate(2px, 1px);
+    filter: drop-shadow(2px 0 #00ffcc) drop-shadow(-2px 0 #ff3b00);
+  }
+}
+
+@keyframes presetFlip3D {
+  0% {
+    transform: perspective(800px) rotateY(180deg) rotateX(25deg) scale(0.7);
+    opacity: 0;
+  }
+  50% {
+    transform: perspective(800px) rotateY(45deg) rotateX(-10deg) scale(1.05);
+    opacity: 0.9;
+  }
+  100% {
+    transform: perspective(800px) rotateY(0deg) rotateX(0deg) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes presetLiquidWave {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-12px) rotate(2.5deg);
+  }
+  50% {
+    transform: translateY(4px) rotate(-1.5deg);
+  }
+  75% {
+    transform: translateY(-8px) rotate(1.8deg);
+  }
+}
+
+/* Constructivist corner accent decorator */
+.artistic-box {
+  position: relative;
+  background-color: #151515;
+  border: 1px solid #2a2a2a;
+}
+
+.artistic-box::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid #ff3b00;
+  border-left: 2px solid #ff3b00;
+  pointer-events: none;
+}
