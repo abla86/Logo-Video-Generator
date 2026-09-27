@@ -221,6 +221,13 @@ export const LogoDesigner: React.FC<LogoDesignerProps> = ({
 
       setCurrentLogo(newLogo);
       onLogoGenerated(newLogo);
+
+      setTimeout(() => {
+        const viewportEl = document.getElementById("logo-canvas-viewport");
+        if (viewportEl) {
+          viewportEl.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 150);
     } catch (err: any) {
       console.error("Logo Generation Error:", err);
       setError(
@@ -352,10 +359,54 @@ export const LogoDesigner: React.FC<LogoDesignerProps> = ({
                 id="textarea-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                onKeyDown={(e) => {
+                  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+                    e.preventDefault();
+                    if (companyName.trim()) {
+                      handleGenerateLogo(e as any);
+                    }
+                  }
+                }}
                 rows={3}
                 placeholder="Describe central symbols, geometry, mood, metaphor, or visual balance..."
                 className="w-full bg-[#0E0E0E] border border-[#333] p-3 text-xs text-white placeholder-white/30 focus:border-[#FF3B00] focus:outline-none transition-colors resize-none leading-relaxed"
               />
+
+              {/* Direct Next Step Banner */}
+              <div
+                className={`mt-3 p-3 rounded-lg border transition-all ${
+                  companyName.trim()
+                    ? "bg-[#1E1210] border-[#FF3B00] shadow-[0_0_20px_rgba(255,59,0,0.25)]"
+                    : "bg-[#0E0E0E] border-[#222]"
+                }`}
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-2 text-[11px] font-mono">
+                    <span
+                      className={`w-2.5 h-2.5 rounded-full ${
+                        companyName.trim() ? "bg-[#FF3B00] animate-ping" : "bg-zinc-600"
+                      }`}
+                    />
+                    <span className="text-white font-bold">
+                      {companyName.trim()
+                        ? "KLAR FOR GENERERING! Klikk på knappen eller trykk Ctrl+Enter"
+                        : "Fyll inn merkenavn i trinn 01 for å starte generering"}
+                    </span>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isGenerating || !companyName.trim()}
+                    className={`px-4 py-2 text-xs font-mono font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                      companyName.trim()
+                        ? "bg-[#FF3B00] hover:bg-white text-black hover:scale-105 active:scale-95 shadow-lg shadow-[#FF3B00]/40 font-bold"
+                        : "bg-zinc-800 text-zinc-500 opacity-50 cursor-not-allowed"
+                    }`}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Generer Logo Nå ➔</span>
+                  </button>
+                </div>
+              </div>
 
               {/* Inspiration Chips */}
               <div className="mt-3 flex flex-wrap gap-2">
@@ -554,7 +605,7 @@ export const LogoDesigner: React.FC<LogoDesignerProps> = ({
 
         {/* Right Column: Bauhaus Viewport Stage */}
         <div className="lg:col-span-5 space-y-6">
-          <div className="bg-[#151515] border border-[#333] p-6 sm:p-8 relative flex flex-col h-full">
+          <div id="logo-canvas-viewport" className="bg-[#151515] border border-[#333] p-6 sm:p-8 relative flex flex-col h-full rounded-lg shadow-xl">
             <div className="absolute -top-px -left-px w-3 h-3 border-t-2 border-l-2 border-[#FF3B00] pointer-events-none"></div>
 
             <div className="flex items-center justify-between mb-4">
@@ -563,11 +614,11 @@ export const LogoDesigner: React.FC<LogoDesignerProps> = ({
               </label>
 
               {/* Canvas Backdrop mode */}
-              <div className="flex items-center border border-[#333] text-[9px] font-mono uppercase tracking-widest">
+              <div className="flex items-center border border-[#333] text-[9px] font-mono uppercase tracking-widest rounded overflow-hidden">
                 <button
                   type="button"
                   onClick={() => setPreviewBg("dark")}
-                  className={`px-2.5 py-1 transition-colors ${
+                  className={`px-2.5 py-1 transition-all cursor-pointer hover:scale-105 ${
                     previewBg === "dark" ? "bg-white text-black font-bold" : "text-white/50 hover:text-white"
                   }`}
                 >
@@ -576,7 +627,7 @@ export const LogoDesigner: React.FC<LogoDesignerProps> = ({
                 <button
                   type="button"
                   onClick={() => setPreviewBg("light")}
-                  className={`px-2.5 py-1 transition-colors ${
+                  className={`px-2.5 py-1 transition-all cursor-pointer hover:scale-105 ${
                     previewBg === "light" ? "bg-white text-black font-bold" : "text-white/50 hover:text-white"
                   }`}
                 >
@@ -585,7 +636,7 @@ export const LogoDesigner: React.FC<LogoDesignerProps> = ({
                 <button
                   type="button"
                   onClick={() => setPreviewBg("grid")}
-                  className={`px-2.5 py-1 transition-colors ${
+                  className={`px-2.5 py-1 transition-all cursor-pointer hover:scale-105 ${
                     previewBg === "grid" ? "bg-white text-black font-bold" : "text-white/50 hover:text-white"
                   }`}
                 >
@@ -697,7 +748,7 @@ export const LogoDesigner: React.FC<LogoDesignerProps> = ({
                     type="button"
                     id="btn-goto-animate"
                     onClick={() => onAnimateLogo(currentLogo)}
-                    className="py-3 px-4 bg-white text-black font-black uppercase text-[10px] tracking-widest hover:bg-[#FF3B00] hover:text-white flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                    className="py-3 px-4 bg-white text-black font-black uppercase text-[10px] tracking-widest hover:bg-[#FF3B00] hover:text-white flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-md rounded"
                   >
                     <Play className="w-3.5 h-3.5" />
                     <span>Animate Motion</span>
@@ -707,7 +758,7 @@ export const LogoDesigner: React.FC<LogoDesignerProps> = ({
                     type="button"
                     id="btn-goto-veo-video"
                     onClick={() => onConvertToVideo(currentLogo)}
-                    className="py-3 px-4 border border-[#FF3B00] text-[#FF3B00] font-black uppercase text-[10px] tracking-widest hover:bg-[#FF3B00] hover:text-black flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                    className="py-3 px-4 border border-[#FF3B00] text-[#FF3B00] font-black uppercase text-[10px] tracking-widest hover:bg-[#FF3B00] hover:text-black flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-md shadow-[#FF3B00]/20 rounded"
                   >
                     <Film className="w-3.5 h-3.5" />
                     <span>Synthesize Video</span>
@@ -719,7 +770,7 @@ export const LogoDesigner: React.FC<LogoDesignerProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsEditorOpen(true)}
-                    className="py-2.5 px-3 border border-[#333] hover:border-[#FF3B00] bg-[#0E0E0E] text-white/80 hover:text-white text-[10px] font-mono uppercase tracking-widest flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                    className="py-2.5 px-3 border border-[#333] hover:border-[#FF3B00] bg-[#0E0E0E] text-white/80 hover:text-white text-[10px] font-mono uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 cursor-pointer rounded"
                   >
                     <Wand2 className="w-3.5 h-3.5 text-[#FF3B00]" />
                     <span>Edit With Prompt</span>
@@ -728,7 +779,7 @@ export const LogoDesigner: React.FC<LogoDesignerProps> = ({
                   <button
                     type="button"
                     onClick={() => onOpenSonicStudio && onOpenSonicStudio(currentLogo)}
-                    className="py-2.5 px-3 border border-[#333] hover:border-[#FF3B00] bg-[#0E0E0E] text-white/80 hover:text-white text-[10px] font-mono uppercase tracking-widest flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                    className="py-2.5 px-3 border border-[#333] hover:border-[#FF3B00] bg-[#0E0E0E] text-white/80 hover:text-white text-[10px] font-mono uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 cursor-pointer rounded"
                   >
                     <Music className="w-3.5 h-3.5 text-[#FF3B00]" />
                     <span>Sonic Sound Identity</span>
@@ -746,28 +797,28 @@ export const LogoDesigner: React.FC<LogoDesignerProps> = ({
                       <button
                         type="button"
                         onClick={() => handleDownloadVectorAsset("svg")}
-                        className="p-1.5 bg-[#1C1C1E] border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500 hover:text-black uppercase cursor-pointer text-center"
+                        className="p-1.5 bg-[#1C1C1E] border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500 hover:text-black uppercase cursor-pointer text-center transition-all hover:scale-105 active:scale-95 rounded"
                       >
                         SVG Vektor
                       </button>
                       <button
                         type="button"
                         onClick={() => handleDownloadVectorAsset("tokens")}
-                        className="p-1.5 bg-[#1C1C1E] border border-zinc-700 text-zinc-300 hover:text-white uppercase cursor-pointer text-center"
+                        className="p-1.5 bg-[#1C1C1E] border border-zinc-700 text-zinc-300 hover:text-white uppercase cursor-pointer text-center transition-all hover:scale-105 active:scale-95 rounded"
                       >
                         Tokens (.JSON)
                       </button>
                       <button
                         type="button"
                         onClick={() => handleDownloadVectorAsset("css")}
-                        className="p-1.5 bg-[#1C1C1E] border border-zinc-700 text-zinc-300 hover:text-white uppercase cursor-pointer text-center"
+                        className="p-1.5 bg-[#1C1C1E] border border-zinc-700 text-zinc-300 hover:text-white uppercase cursor-pointer text-center transition-all hover:scale-105 active:scale-95 rounded"
                       >
                         CSS Variabler
                       </button>
                       <button
                         type="button"
                         onClick={() => handleDownloadVectorAsset("guide")}
-                        className="p-1.5 bg-[#1C1C1E] border border-zinc-700 text-zinc-300 hover:text-white uppercase cursor-pointer text-center"
+                        className="p-1.5 bg-[#1C1C1E] border border-zinc-700 text-zinc-300 hover:text-white uppercase cursor-pointer text-center transition-all hover:scale-105 active:scale-95 rounded"
                       >
                         Merkevareguide
                       </button>
@@ -779,7 +830,7 @@ export const LogoDesigner: React.FC<LogoDesignerProps> = ({
                     type="button"
                     id="btn-goto-palette"
                     onClick={() => onOpenPaletteStudio && onOpenPaletteStudio(currentLogo)}
-                    className="py-2 px-3 border border-[#222] hover:border-[#FF3B00] bg-[#0A0A0A] text-white/70 hover:text-white text-[10px] font-mono uppercase tracking-widest flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                    className="py-2 px-3 border border-[#222] hover:border-[#FF3B00] bg-[#0A0A0A] text-white/70 hover:text-white text-[10px] font-mono uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 cursor-pointer rounded"
                   >
                     <Palette className="w-3.5 h-3.5 text-[#FF3B00]" />
                     <span>Brand Palette</span>
@@ -789,7 +840,7 @@ export const LogoDesigner: React.FC<LogoDesignerProps> = ({
                     type="button"
                     id="btn-goto-style-transfer"
                     onClick={() => onOpenStyleTransfer && onOpenStyleTransfer(currentLogo)}
-                    className="py-2 px-3 border border-[#222] hover:border-[#FF3B00] bg-[#0A0A0A] text-white/70 hover:text-white text-[10px] font-mono uppercase tracking-widest flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                    className="py-2 px-3 border border-[#222] hover:border-[#FF3B00] bg-[#0A0A0A] text-white/70 hover:text-white text-[10px] font-mono uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 cursor-pointer rounded"
                   >
                     <Sliders className="w-3.5 h-3.5 text-[#FF3B00]" />
                     <span>Style Transfer</span>
@@ -804,10 +855,10 @@ export const LogoDesigner: React.FC<LogoDesignerProps> = ({
                       `${currentLogo.companyName}-logo-${currentLogo.imageSize}.png`
                     )
                   }
-                  className="w-full py-2.5 px-4 border border-[#333] hover:border-white text-white/70 hover:text-white text-[10px] font-mono uppercase tracking-widest flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                  className="w-full py-2.5 px-4 border border-[#333] hover:border-[#FF3B00] bg-[#141416] text-white hover:text-white text-[10px] font-mono uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer rounded shadow-sm"
                 >
                   <Download className="w-3.5 h-3.5 text-[#FF3B00]" />
-                  <span>Export Master Asset ({currentLogo.imageSize})</span>
+                  <span>Last ned Logo ({currentLogo.imageSize})</span>
                 </button>
               </div>
             )}

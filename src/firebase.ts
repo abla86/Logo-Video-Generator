@@ -162,3 +162,56 @@ export async function deleteUserLogo(userId: string, logoId: string): Promise<vo
     handleFirestoreError(error, OperationType.DELETE, path);
   }
 }
+
+// StudioProject CRUD helpers for full persistence across sessions
+export async function saveUserStudioProject(userId: string, projectData: {
+  id: string;
+  name: string;
+  productOrService?: string;
+  companyName?: string;
+  industry?: string;
+  brandLogoUrl?: string;
+  renderedVideoUrl?: string;
+  projectJson: string;
+  createdAt?: string;
+  updatedAt?: string;
+}): Promise<void> {
+  const path = `users/${userId}/projects/${projectData.id}`;
+  try {
+    await setDoc(doc(db, "users", userId, "projects", projectData.id), {
+      id: projectData.id,
+      userId,
+      name: projectData.name,
+      productOrService: projectData.productOrService || "",
+      companyName: projectData.companyName || "",
+      industry: projectData.industry || "",
+      brandLogoUrl: projectData.brandLogoUrl || "",
+      renderedVideoUrl: projectData.renderedVideoUrl || "",
+      projectJson: projectData.projectJson,
+      createdAt: projectData.createdAt || new Date().toISOString(),
+      updatedAt: projectData.updatedAt || new Date().toISOString(),
+    }, { merge: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function loadUserStudioProjects(userId: string): Promise<any[]> {
+  const path = `users/${userId}/projects`;
+  try {
+    const snapshot = await getDocs(collection(db, "users", userId, "projects"));
+    return snapshot.docs.map((d) => d.data());
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, path);
+  }
+}
+
+export async function deleteUserStudioProject(userId: string, projectId: string): Promise<void> {
+  const path = `users/${userId}/projects/${projectId}`;
+  try {
+    await deleteDoc(doc(db, "users", userId, "projects", projectId));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+}
+

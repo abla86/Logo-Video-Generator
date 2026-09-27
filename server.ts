@@ -1374,6 +1374,7 @@ Generate a sophisticated brand color palette. Return a JSON object matching stan
         platform = "tiktok",
         salesFramework = "AIDA",
         language = "no",
+        isSoundOff = false,
       } = req.body;
 
       if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
@@ -1382,6 +1383,11 @@ Generate a sophisticated brand color palette. Return a JSON object matching stan
       }
 
       const cleanPrompt = prompt.trim();
+      const isSoundOffRequested = Boolean(
+        isSoundOff ||
+        req.body.soundOffMode ||
+        /uten lyd|silent|sound-off|sound off|lydløs|stum|mute|skjerm|infoskjerm/i.test(cleanPrompt)
+      );
 
       // If Gemini API is available, try cloud AI first for 100% tailor-made generation
       if (process.env.GEMINI_API_KEY) {
@@ -1394,6 +1400,13 @@ The user wants a high-converting commercial video based on the user's specific r
 Target Platform: ${platform}
 Sales Framework: ${salesFramework}
 Language: ${language === "no" ? "Norwegian (Bokmål)" : "English"}
+${isSoundOffRequested ? `
+CRITICAL SOUND-OFF / REKLAME UTEN LYD REQUIREMENT:
+The user explicitly wants this ad created for SOUND-OFF / UTEN LYD viewing!
+Over 85% of mobile users watch feeds with sound muted, and digital screens / store displays run without audio.
+1. All key messages, product benefits, price points, and call-to-actions MUST be delivered visually through bold, concise, high-contrast 'onScreenText' (kinetic captions, badge banners, stickers like «TILBUD», «SE HER», «KUN 199,-», «BESTILL NÅ»).
+2. Do NOT rely on voiceover to explain the product. Every scene must make sense and compel action purely visually.
+` : ""}
 
 CRITICAL CONTEXT GUARD REQUIREMENT:
 You must strictly analyze and produce content exclusively for the user's ACTUAL product, niche, or topic described in the prompt (for example: Etsy dayplanners, meal planners, digital downloads, clothing, food, tech, posters, etc.). NEVER output skincare, dry skin, or cosmetic concepts unless the user explicitly requested skincare. Any unrelated topic violates the strict system intent guard.
@@ -2683,6 +2696,8 @@ function escapeXml(str: string): string {
         resolution = "720p",
         commercialLicense = false,
         fps = 30,
+        audioMode = "silent", // "none" (uten lydspor / -an), "silent" (dempet AAC for sosiale medier), "synth"
+        isSoundOff = false,
       } = req.body;
 
       if (!scenes || !Array.isArray(scenes) || scenes.length === 0) {
@@ -2698,6 +2713,8 @@ function escapeXml(str: string): string {
       const validAspectRatios = ["9:16", "16:9", "1:1", "4:5"];
       const targetRatio = validAspectRatios.includes(aspectRatio) ? aspectRatio : "9:16";
       const safeFps = Math.max(15, Math.min(60, Number(fps) || 30));
+      const isPureMuted = audioMode === "none";
+      const isSoundOffMode = isSoundOff || isPureMuted || audioMode === "silent";
 
       // Create temporary scratch directory
       tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "brandforge-render-"));
@@ -2793,8 +2810,14 @@ function escapeXml(str: string): string {
   <rect x="${targetWidth - 215}" y="45" width="170" height="38" fill="${theme.accent}" rx="10"/>
   <text x="${targetWidth - 130}" y="69" font-family="sans-serif" font-weight="900" font-size="12" fill="#000000" text-anchor="middle" letter-spacing="1">${theme.tag.split(" // ")[0]}</text>
   
+  ${isSoundOffMode ? `
+  <!-- Sound-Off Floating Badge -->
+  <rect x="45" y="92" width="220" height="28" fill="#000000" rx="8" stroke="${theme.accent}" stroke-width="1.5"/>
+  <text x="155" y="111" font-family="sans-serif" font-weight="900" font-size="11" fill="${theme.accent}" text-anchor="middle" letter-spacing="1">🔇 SOUND-OFF // UTEN LYD</text>
+  ` : ""}
+
   <!-- Central Focus Card -->
-  <rect x="40" y="${targetHeight * 0.32}" width="${targetWidth - 80}" height="${targetHeight * 0.38}" fill="rgba(0,0,0,0.65)" rx="24" stroke="${theme.accent}" stroke-width="2"/>
+  <rect x="40" y="${targetHeight * 0.32}" width="${targetWidth - 80}" height="${targetHeight * 0.38}" fill="rgba(0,0,0,0.72)" rx="24" stroke="${theme.accent}" stroke-width="2"/>
   
   <!-- Headline -->
   <text x="${targetWidth / 2}" y="${targetHeight * 0.42}" font-family="sans-serif" font-weight="900" font-size="${Math.round(targetWidth * 0.055)}" fill="#FFFFFF" text-anchor="middle">${sceneTitle}</text>
@@ -2834,39 +2857,67 @@ function escapeXml(str: string): string {
 
       const outputPath = path.join(tempDir, "output.mp4");
 
-      // Execute FFmpeg to create the video with H.264 video codec and synthetic audio track
-      const ffmpegArgs = [
-        "-y",
-        "-f",
-        "concat",
-        "-safe",
-        "0",
-        "-i",
-        concatListPath,
-        "-f",
-        "lavfi",
-        "-i",
-        "anullsrc=r=44100:cl=stereo",
-        "-vf",
-        `scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=decrease,pad=${targetWidth}:${targetHeight}:(ow-iw)/2:(oh-ih)/2:black,format=yuv420p`,
-        "-c:v",
-        "libx264",
-        "-preset",
-        "veryfast",
-        "-crf",
-        "23",
-        "-r",
-        String(fps),
-        "-c:a",
-        "aac",
-        "-b:a",
-        "192k",
-        "-movflags",
-        "+faststart",
-        "-t",
-        String(totalRenderDuration),
-        outputPath,
-      ];
+      // Execute FFmpeg to create the video with H.264 video codec
+      // If audioMode is "none", completely drop audio track (-an) for pure soundless video.
+      // Otherwise, generate a compliant silent AAC audio stream (compatible with Meta/TikTok).
+      const ffmpegArgs = isPureMuted
+        ? [
+            "-y",
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+            concatListPath,
+            "-vf",
+            `scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=decrease,pad=${targetWidth}:${targetHeight}:(ow-iw)/2:(oh-ih)/2:black,format=yuv420p`,
+            "-c:v",
+            "libx264",
+            "-preset",
+            "veryfast",
+            "-crf",
+            "23",
+            "-r",
+            String(safeFps),
+            "-an", // Pure silent ad (no audio track at all)
+            "-movflags",
+            "+faststart",
+            "-t",
+            String(totalRenderDuration),
+            outputPath,
+          ]
+        : [
+            "-y",
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+            concatListPath,
+            "-f",
+            "lavfi",
+            "-i",
+            "anullsrc=r=44100:cl=stereo",
+            "-vf",
+            `scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=decrease,pad=${targetWidth}:${targetHeight}:(ow-iw)/2:(oh-ih)/2:black,format=yuv420p`,
+            "-c:v",
+            "libx264",
+            "-preset",
+            "veryfast",
+            "-crf",
+            "23",
+            "-r",
+            String(safeFps),
+            "-c:a",
+            "aac",
+            "-b:a",
+            "128k",
+            "-movflags",
+            "+faststart",
+            "-t",
+            String(totalRenderDuration),
+            outputPath,
+          ];
 
       await execFileAsync("/usr/bin/ffmpeg", ffmpegArgs);
 
@@ -2889,12 +2940,12 @@ function escapeXml(str: string): string {
         valid: true,
         format: probeData.format?.format_name || "mp4",
         videoCodec: videoStream.codec_name || "h264",
-        audioCodec: audioStream.codec_name || "aac",
+        audioCodec: isPureMuted ? "Ingen (Ren stumfilm / Uten lydspor)" : (audioStream.codec_name || "aac (dempet)"),
         width: videoStream.width || targetWidth,
         height: videoStream.height || targetHeight,
         aspectRatio,
         durationSeconds: parseFloat(probeData.format?.duration || "0"),
-        fps,
+        fps: safeFps,
         bitrateKbps: Math.round((parseInt(probeData.format?.bit_rate || "0", 10)) / 1000),
         fileSizeBytes: parseInt(probeData.format?.size || "0", 10),
         isDecodable: true,

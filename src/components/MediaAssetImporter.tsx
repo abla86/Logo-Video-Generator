@@ -1217,7 +1217,7 @@ export const MediaAssetImporter: React.FC<MediaAssetImporterProps> = ({
                       <button
                         type="button"
                         onClick={() => onSelectAssetForScene(asset)}
-                        className="flex-1 py-1.5 bg-[#1C1C1E] hover:bg-[#FF3B00] text-zinc-300 hover:text-black font-mono text-[10px] uppercase font-bold border border-[#333] transition-colors cursor-pointer rounded flex items-center justify-center gap-1"
+                        className="flex-1 py-1.5 bg-[#1C1C1E] hover:bg-[#FF3B00] text-zinc-300 hover:text-black font-mono text-[10px] uppercase font-bold border border-[#333] transition-all hover:scale-105 active:scale-95 cursor-pointer rounded flex items-center justify-center gap-1 shadow-sm"
                       >
                         <span>Bruk i Scene</span>
                         <ArrowRight className="w-3 h-3" />
@@ -1226,7 +1226,7 @@ export const MediaAssetImporter: React.FC<MediaAssetImporterProps> = ({
                     <a
                       href={asset.dataUrl}
                       download={asset.name}
-                      className="p-1.5 bg-[#1C1C1E] text-zinc-400 hover:text-white border border-[#333] rounded transition-colors cursor-pointer"
+                      className="p-1.5 bg-[#1C1C1E] hover:bg-zinc-800 text-zinc-400 hover:text-white border border-[#333] rounded transition-all hover:scale-105 active:scale-95 cursor-pointer"
                       title="Last ned ressurs"
                     >
                       <Download className="w-3.5 h-3.5" />
@@ -1234,7 +1234,7 @@ export const MediaAssetImporter: React.FC<MediaAssetImporterProps> = ({
                     <button
                       type="button"
                       onClick={() => handleDelete(asset.id)}
-                      className="p-1.5 bg-[#1C1C1E] text-zinc-500 hover:text-red-400 border border-[#333] rounded transition-colors cursor-pointer"
+                      className="p-1.5 bg-[#1C1C1E] hover:bg-red-950/60 text-zinc-500 hover:text-red-400 border border-[#333] hover:border-red-500/40 rounded transition-all hover:scale-105 active:scale-95 cursor-pointer"
                       title="Slett ressurs"
                     >
                       <Trash2 className="w-3.5 h-3.5" />

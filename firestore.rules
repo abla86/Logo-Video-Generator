@@ -108,12 +108,35 @@ service cloud.firestore {
         (!('sourcesJson' in data) || (data.sourcesJson is string && data.sourcesJson.size() <= 16384));
     }
 
+    function isValidStudioProject(data) {
+      return data.keys().hasAll(['id', 'userId', 'name', 'projectJson', 'createdAt']) &&
+        data.keys().hasOnly(['id', 'userId', 'name', 'productOrService', 'companyName', 'industry', 'brandLogoUrl', 'renderedVideoUrl', 'projectJson', 'createdAt', 'updatedAt']) &&
+        data.id is string && data.id.size() <= 128 &&
+        data.userId is string && data.userId.size() <= 128 &&
+        data.name is string && data.name.size() <= 128 &&
+        data.projectJson is string && data.projectJson.size() <= 524288 &&
+        data.createdAt is string && data.createdAt.size() <= 64 &&
+        (!('productOrService' in data) || (data.productOrService is string && data.productOrService.size() <= 512)) &&
+        (!('companyName' in data) || (data.companyName is string && data.companyName.size() <= 128)) &&
+        (!('industry' in data) || (data.industry is string && data.industry.size() <= 128)) &&
+        (!('brandLogoUrl' in data) || (data.brandLogoUrl is string && data.brandLogoUrl.size() <= 2097152)) &&
+        (!('renderedVideoUrl' in data) || (data.renderedVideoUrl is string && data.renderedVideoUrl.size() <= 2097152)) &&
+        (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64));
+    }
+
     // User profile document
     match /users/{userId} {
       allow get: if isOwner(userId);
       allow create: if isOwner(userId) && isValidUserProfile(incoming()) && incoming().uid == userId;
       allow update: if isOwner(userId) && isValidUserProfile(incoming()) && incoming().uid == userId && incoming().createdAt == existing().createdAt;
       allow delete: if isOwner(userId);
+
+      // User studio projects
+      match /projects/{projectId} {
+        allow get, list, delete: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(projectId) && isValidStudioProject(incoming()) && incoming().userId == userId;
+        allow update: if isOwner(userId) && isValidId(projectId) && isValidStudioProject(incoming()) && incoming().userId == existing().userId && incoming().createdAt == existing().createdAt;
+      }
 
       // User logos
       match /logos/{logoId} {

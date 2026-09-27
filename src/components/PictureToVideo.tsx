@@ -7,6 +7,7 @@ import {
   RefreshCw,
   AlertCircle,
   Image as ImageIcon,
+  Sparkles,
 } from "lucide-react";
 import { GeneratedLogo, GeneratedVideo, VideoAspectRatio, VideoResolution } from "../types";
 import { PHOTO_VIDEO_PRESETS } from "../data/presets";
@@ -406,9 +407,54 @@ export const PictureToVideo: React.FC<PictureToVideoProps> = ({
                 rows={3}
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+                    e.preventDefault();
+                    if (selectedImage && !isGenerating) {
+                      handleGenerateVideo();
+                    }
+                  }
+                }}
                 placeholder="Describe camera path and motion choreography..."
                 className="w-full px-3.5 py-2.5 bg-[#0E0E0E] border border-[#333] text-[#F0F0F0] focus:border-[#FF3B00] outline-none text-xs font-mono transition-colors resize-none"
               />
+
+              {/* Direct Next Step Banner */}
+              <div
+                className={`mt-3 p-3 rounded-lg border transition-all ${
+                  selectedImage
+                    ? "bg-[#1E1210] border-[#FF3B00] shadow-[0_0_20px_rgba(255,59,0,0.25)]"
+                    : "bg-[#0E0E0E] border-[#222]"
+                }`}
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-2 text-[11px] font-mono">
+                    <span
+                      className={`w-2.5 h-2.5 rounded-full ${
+                        selectedImage ? "bg-[#FF3B00] animate-ping" : "bg-zinc-600"
+                      }`}
+                    />
+                    <span className="text-white font-bold">
+                      {selectedImage
+                        ? "KLAR FOR VIDEO! Klikk på knappen eller trykk Ctrl+Enter"
+                        : "Velg eller last opp et bilde i trinn 01 først"}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={isGenerating || !selectedImage}
+                    onClick={handleGenerateVideo}
+                    className={`px-4 py-2 text-xs font-mono font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                      selectedImage
+                        ? "bg-[#FF3B00] hover:bg-white text-black hover:scale-105 active:scale-95 shadow-lg shadow-[#FF3B00]/40 font-bold"
+                        : "bg-zinc-800 text-zinc-500 opacity-50 cursor-not-allowed"
+                    }`}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Generer Video Nå ➔</span>
+                  </button>
+                </div>
+              </div>
 
               <div className="mt-2.5 flex items-center gap-1.5 flex-wrap">
                 {PHOTO_VIDEO_PRESETS.map((preset) => (

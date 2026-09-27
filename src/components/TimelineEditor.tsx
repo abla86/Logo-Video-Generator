@@ -511,14 +511,14 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={handleAddNewItem}
-            className="px-2.5 py-1.5 bg-[#FF3B00] hover:bg-[#e03400] text-black font-black uppercase text-xs font-mono flex items-center gap-1 cursor-pointer transition-colors"
+            className="px-3 py-1.5 bg-[#FF3B00] hover:bg-white text-black font-black uppercase text-xs font-mono flex items-center gap-1.5 cursor-pointer transition-all hover:scale-105 active:scale-95 shadow-md shadow-[#FF3B00]/30 rounded"
           >
             <span>+ Legg til klipp</span>
           </button>
           <button
             onClick={handleDuplicateItem}
             disabled={!selectedItemId}
-            className="px-2.5 py-1.5 bg-[#1C1C1E] border border-[#333] hover:border-white disabled:opacity-40 text-xs font-mono text-white flex items-center gap-1 cursor-pointer"
+            className="px-2.5 py-1.5 bg-[#1C1C1E] border border-[#333] hover:border-white disabled:opacity-40 text-xs font-mono text-white flex items-center gap-1 cursor-pointer transition-all hover:scale-105 active:scale-95 rounded"
           >
             <Copy className="w-3.5 h-3.5" />
             <span>Dupliser</span>
@@ -526,14 +526,14 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
           <button
             onClick={handleDeleteItem}
             disabled={!selectedItemId}
-            className="px-2.5 py-1.5 bg-[#1C1C1E] border border-[#333] hover:border-red-500 disabled:opacity-40 text-xs font-mono text-red-400 flex items-center gap-1 cursor-pointer"
+            className="px-2.5 py-1.5 bg-[#1C1C1E] border border-[#333] hover:border-red-500 disabled:opacity-40 text-xs font-mono text-red-400 flex items-center gap-1 cursor-pointer transition-all hover:scale-105 active:scale-95 rounded"
           >
             <Trash2 className="w-3.5 h-3.5" />
             <span>Slett</span>
           </button>
           <button
             onClick={handleExportTimelineJson}
-            className="px-2.5 py-1.5 bg-[#1C1C1E] border border-[#333] hover:border-[#FF3B00] text-xs font-mono text-zinc-300 hover:text-white flex items-center gap-1 cursor-pointer"
+            className="px-2.5 py-1.5 bg-[#1C1C1E] border border-[#333] hover:border-[#FF3B00] text-xs font-mono text-zinc-300 hover:text-white flex items-center gap-1 cursor-pointer transition-all hover:scale-105 active:scale-95 rounded"
           >
             <Download className="w-3.5 h-3.5 text-[#FF3B00]" />
             <span>Eksporter JSON</span>
@@ -541,7 +541,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
           <button
             onClick={handleRenderTimelineVideo}
             disabled={isRendering}
-            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-black font-black uppercase text-xs font-mono flex items-center gap-1.5 cursor-pointer transition-colors"
+            className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-black font-black uppercase text-xs font-mono flex items-center gap-1.5 cursor-pointer transition-all hover:scale-105 active:scale-95 shadow-md shadow-emerald-500/30 rounded"
           >
             <Film className="w-3.5 h-3.5" />
             <span>{isRendering ? `Rendrer (${renderProgress}%)...` : "Rendre MP4 (FFmpeg)"}</span>
@@ -550,39 +550,119 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
       </div>
 
       {renderError && (
-        <div className="p-3 bg-red-950/40 border border-red-500/40 text-red-300 text-xs font-mono">
+        <div className="p-3 bg-red-950/40 border border-red-500/40 text-red-300 text-xs font-mono rounded">
           {renderError}
         </div>
       )}
 
-      {renderedVideoUrl && (
-        <div className="p-4 bg-[#141416] border border-emerald-500/50 rounded-lg space-y-3">
-          <div className="flex items-center justify-between text-xs text-emerald-300">
-            <div className="flex items-center gap-2">
-              <Film className="w-4 h-4 text-emerald-400" />
-              <span className="font-bold font-mono">Tidslinje ferdig rendret som MP4 (H.264/AAC)!</span>
+      {/* Live Timeline Video & Stage Monitor */}
+      {(() => {
+        const activeVisual = tracks
+          .find((t) => t.type === "visual")
+          ?.items.find((i) => currentTime >= i.startTime && currentTime <= i.startTime + i.duration);
+        const activeText = tracks
+          .find((t) => t.type === "text")
+          ?.items.find((i) => currentTime >= i.startTime && currentTime <= i.startTime + i.duration);
+        const activeVoice = tracks
+          .find((t) => t.type === "voiceover")
+          ?.items.find((i) => currentTime >= i.startTime && currentTime <= i.startTime + i.duration);
+        const activeBrand = tracks
+          .find((t) => t.type === "brand")
+          ?.items.find((i) => currentTime >= i.startTime && currentTime <= i.startTime + i.duration);
+
+        return (
+          <div className="p-4 bg-[#141416] border border-[#262626] hover:border-zinc-700 transition-colors rounded-xl space-y-3 shadow-2xl">
+            <div className="flex items-center justify-between text-xs font-mono">
+              <div className="flex items-center gap-2">
+                <Film className="w-4 h-4 text-[#FF3B00]" />
+                <span className="font-bold text-white uppercase tracking-wider">
+                  {renderedVideoUrl ? "Ferdig Rendret MP4 Spiller" : "Direkte Tidslinje-Forhåndsvisning"}
+                </span>
+                <span className="text-[10px] px-2 py-0.5 bg-black/60 text-zinc-400 border border-zinc-700 rounded">
+                  00:{currentTime < 10 ? `0${currentTime.toFixed(1)}` : currentTime.toFixed(1)} / 00:{totalDuration.toFixed(1)}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {renderedVideoUrl ? (
+                  <a
+                    href={renderedVideoUrl}
+                    download={`BrandForge_Timeline_${Date.now()}.mp4`}
+                    className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase text-[10px] tracking-wider rounded transition-all hover:scale-105 active:scale-95 shadow-md shadow-emerald-500/20"
+                  >
+                    Last ned MP4
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleRenderTimelineVideo}
+                    disabled={isRendering}
+                    className="px-3 py-1.5 bg-[#FF3B00] hover:bg-white text-black font-black uppercase text-[10px] tracking-wider rounded transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-md shadow-[#FF3B00]/30"
+                  >
+                    {isRendering ? `Rendrer (${renderProgress}%)...` : "Rendre til MP4 ➔"}
+                  </button>
+                )}
+              </div>
             </div>
-            <a
-              href={renderedVideoUrl}
-              download={`BrandForge_Timeline_${Date.now()}.mp4`}
-              className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase text-[10px] tracking-wider rounded transition-colors"
-            >
-              Last ned MP4
-            </a>
+
+            <div className="relative max-w-xl mx-auto aspect-video bg-gradient-to-br from-[#0F172A] via-[#1E1B4B] to-[#121216] rounded-xl overflow-hidden border-2 border-[#333] shadow-2xl flex flex-col justify-between p-4 group">
+              {renderedVideoUrl ? (
+                <video
+                  src={renderedVideoUrl}
+                  controls
+                  autoPlay
+                  muted
+                  playsInline
+                  loop
+                  className="absolute inset-0 w-full h-full object-contain bg-black"
+                />
+              ) : (
+                <>
+                  {/* Top Bar: Brand watermark & Scene status */}
+                  <div className="flex items-center justify-between relative z-10">
+                    <div className="px-2.5 py-1 bg-black/75 backdrop-blur-md rounded-lg border border-white/20 text-[10px] font-mono font-bold text-white flex items-center gap-1.5 shadow">
+                      <span className="w-2 h-2 rounded-full bg-[#FF3B00] animate-pulse" />
+                      <span>{activeBrand?.title || `${companyName}`}</span>
+                    </div>
+                    <span className="px-2 py-0.5 bg-black/70 border border-white/10 text-[9px] font-mono text-zinc-300 rounded backdrop-blur-md">
+                      {activeVisual?.title || "Visuelt Klipp"}
+                    </span>
+                  </div>
+
+                  {/* Center stage content */}
+                  <div className="my-auto text-center space-y-2.5 relative z-10 px-4">
+                    <div className="inline-block px-4 py-1.5 bg-[#FF3B00] text-black font-black uppercase text-xs tracking-wider rounded-lg shadow-lg">
+                      {activeText?.title || "TIDSLINJE HOOK // TITTEL"}
+                    </div>
+                    {activeVoice?.title && (
+                      <div className="bg-black/70 backdrop-blur-md border border-white/20 rounded-xl p-2.5 max-w-md mx-auto text-xs text-zinc-200">
+                        «{activeVoice.title}»
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Big Play/Pause Toggle on screen */}
+                  <div
+                    onClick={() => setIsPlaying(!isPlaying)}
+                    className="absolute inset-0 z-20 flex items-center justify-center cursor-pointer transition-all"
+                  >
+                    {!isPlaying ? (
+                      <div className="w-14 h-14 rounded-full bg-black/75 border-2 border-[#FF3B00] text-[#FF3B00] flex items-center justify-center shadow-2xl group-hover:scale-110 group-hover:bg-[#FF3B00] group-hover:text-black transition-all">
+                        <Play className="w-7 h-7 fill-current ml-0.5" />
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {/* Bottom playhead indicator */}
+                  <div className="relative z-10 flex items-center justify-between text-[10px] font-mono text-zinc-400">
+                    <span className="text-emerald-400">● Live Preview Monitor</span>
+                    <span>Klikk hvor som helst for å {isPlaying ? "pause" : "spille av"}</span>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
-          <div className="max-w-md mx-auto aspect-video bg-black rounded-lg overflow-hidden border border-[#333] shadow-xl">
-            <video
-              src={renderedVideoUrl}
-              controls
-              autoPlay
-              muted
-              playsInline
-              loop
-              className="w-full h-full object-contain"
-            />
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Main Timeline Workspace */}
       <div className="bg-[#141416] border border-[#262626] rounded overflow-hidden shadow-2xl space-y-4 p-4">

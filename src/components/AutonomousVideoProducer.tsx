@@ -38,6 +38,8 @@ import {
   ChevronRight,
   TrendingUp,
   VolumeX,
+  SkipBack,
+  SkipForward,
 } from "lucide-react";
 import JSZip from "jszip";
 import {
@@ -159,6 +161,7 @@ export const AutonomousVideoProducer: React.FC<AutonomousVideoProducerProps> = (
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const renderedVideoRef = useRef<HTMLVideoElement>(null);
+  const deliverablesSectionRef = useRef<HTMLDivElement>(null);
   const [videoPlaybackError, setVideoPlaybackError] = useState<string | null>(null);
   const [currentPlayTime, setCurrentPlayTime] = useState(0);
   const [activeSceneIndex, setActiveSceneIndex] = useState(0);
@@ -279,6 +282,21 @@ export const AutonomousVideoProducer: React.FC<AutonomousVideoProducerProps> = (
     }
   }, [isPlaying, activeSceneIndex, speechVoiceEnabled, project]);
 
+  // Master Playback Toggle Handler
+  const togglePlayback = () => {
+    if (playerMode === "mp4" && renderedVideoRef.current) {
+      if (renderedVideoRef.current.paused) {
+        renderedVideoRef.current.play().catch(() => {});
+        setIsPlaying(true);
+      } else {
+        renderedVideoRef.current.pause();
+        setIsPlaying(false);
+      }
+    } else {
+      setIsPlaying((prev) => !prev);
+    }
+  };
+
   // Preload variants and omnichannel if missing
   useEffect(() => {
     if (project) {
@@ -396,6 +414,16 @@ export const AutonomousVideoProducer: React.FC<AutonomousVideoProducerProps> = (
           targetAudience: sanitized.strategy?.targetAudience,
           uniqueValueProposition: sanitized.strategy?.uniqueValueProposition,
         });
+
+        // Automatically trigger MP4 rendering in background
+        setTimeout(() => {
+          handleRenderMP4(sanitized);
+        }, 150);
+
+        // Smoothly scroll down to preview stage so the user immediately sees their video!
+        setTimeout(() => {
+          deliverablesSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 350);
       }
     } catch (err: any) {
       console.error("Video production error:", err);
@@ -804,26 +832,113 @@ ${project.strategy.recommendedHashtags.join(" ")}
           </div>
         </div>
 
-        {/* The Single Master Input Box */}
+        {/* The Master Input Box & Step-by-Step Workflow */}
         <div className="space-y-3">
+          {/* Step Workflow Indicator */}
+          <div className="flex items-center justify-between text-[11px] font-mono text-zinc-400 border-b border-[#222] pb-2">
+            <div className="flex items-center gap-3">
+              <span className={`flex items-center gap-1.5 font-bold ${prompt.trim().length >= 2 ? "text-emerald-400" : "text-[#FF3B00]"}`}>
+                <span className="w-5 h-5 rounded-full bg-[#1C1C1E] border border-current flex items-center justify-center text-[10px]">1</span>
+                <span>Skriv produkt / idé</span>
+                {prompt.trim().length >= 2 && <Check className="w-3.5 h-3.5" />}
+              </span>
+              <span className="text-zinc-600">➔</span>
+              <span className={`flex items-center gap-1.5 font-bold ${prompt.trim().length >= 2 ? "text-[#FF3B00] animate-pulse" : "text-zinc-500"}`}>
+                <span className="w-5 h-5 rounded-full bg-[#1C1C1E] border border-current flex items-center justify-center text-[10px]">2</span>
+                <span>Trykk Produser</span>
+              </span>
+              <span className="text-zinc-600">➔</span>
+              <span className="flex items-center gap-1.5 text-zinc-500 font-bold hidden sm:flex">
+                <span className="w-5 h-5 rounded-full bg-[#1C1C1E] border border-zinc-700 flex items-center justify-center text-[10px]">3</span>
+                <span>Se video &amp; salgspakke</span>
+              </span>
+            </div>
+            <span className="text-[10px] text-zinc-500 hidden md:inline">Ctrl + Enter for hurtigstart</span>
+          </div>
+
           <div className="relative">
             <textarea
               rows={3}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="F.eks: «Jeg vil selge en digital dayplanner på Etsy.» eller «Lag en TikTok som selger en printable meal planner.»..."
-              className="w-full bg-[#0D0D0F] border-2 border-[#333] focus:border-[#FF3B00] p-4 text-sm sm:text-base text-white placeholder-zinc-500 focus:outline-none rounded font-medium leading-relaxed"
+              onKeyDown={(e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+                  e.preventDefault();
+                  if (prompt.trim().length >= 2 && !isGenerating) {
+                    handleStartProduction();
+                  }
+                }
+              }}
+              placeholder="F.eks: «Jeg vil selge en digital dayplanner for iPad og GoodNotes på Etsy.» eller «Lag en TikTok som selger en printable meal planner.»..."
+              className="w-full bg-[#0D0D0F] border-2 border-[#333] focus:border-[#FF3B00] p-4 text-sm sm:text-base text-white placeholder-zinc-500 focus:outline-none rounded font-medium leading-relaxed transition-colors shadow-inner"
             />
           </div>
 
+          {/* Prominent Next Step Call-To-Action Command Box */}
+          <div
+            className={`p-4 sm:p-5 rounded-xl border-2 transition-all duration-300 ${
+              prompt.trim().length >= 2
+                ? "bg-gradient-to-r from-[#20100C] via-[#16161A] to-[#20100C] border-[#FF3B00] shadow-[0_0_35px_rgba(255,59,0,0.4)]"
+                : "bg-[#101012] border-zinc-800"
+            }`}
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`w-3.5 h-3.5 rounded-full shrink-0 ${
+                      prompt.trim().length >= 2
+                        ? "bg-[#FF3B00] shadow-[0_0_12px_#FF3B00] animate-ping"
+                        : "bg-zinc-600"
+                    }`}
+                  />
+                  <span className="text-xs sm:text-sm font-mono font-black uppercase text-white tracking-wider">
+                    {prompt.trim().length >= 2
+                      ? "⚡ STEG 2: KLIKK HER FOR Å STARTE FULL PRODUKSJON"
+                      : "STEG 1: SKRIV INN HVA DU VIL SELGE I FELTET OVER"}
+                  </span>
+                </div>
+                <p className="text-xs font-mono text-zinc-300">
+                  {prompt.trim().length >= 2
+                    ? "Tekst er registrert! Trykk på den store oransje knappen til høyre (eller trykk Ctrl+Enter) for å produsere video, manus og kampanje."
+                    : "Skriv f.eks. «Digital dayplanner» eller klikk et av de raske eksemplene under for å fylle inn med ett klikk."}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleStartProduction}
+                disabled={isGenerating || prompt.trim().length < 2}
+                className={`px-7 py-4 rounded-xl font-black uppercase text-xs sm:text-sm font-mono tracking-wider flex items-center justify-center gap-3 transition-all duration-200 shrink-0 ${
+                  prompt.trim().length >= 2
+                    ? "bg-[#FF3B00] hover:bg-white text-black hover:scale-[1.04] active:scale-[0.96] shadow-2xl shadow-[#FF3B00]/50 cursor-pointer animate-pulse"
+                    : "bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700 opacity-60"
+                }`}
+                title="Start full autonom videoproduksjon fra teksten du oppga"
+              >
+                {isGenerating ? (
+                  <>
+                    <RefreshCw className="w-5 h-5 animate-spin text-black" />
+                    <span>AI PRODUSERER VIDEOEN...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5 text-black" />
+                    <span>PRODUSER VIDEO NÅ ➔</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
           {/* User Prompt Example Chips */}
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 pt-1">
             <div className="flex items-center justify-between text-[11px] font-mono text-zinc-400">
               <span className="font-bold text-zinc-300 uppercase flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-[#FF3B00]" />
-                <span>Raske eksempler (klikk for å teste):</span>
+                <span>Raske eksempler (klikk for å fylle inn automatisk):</span>
               </span>
-              <span className="text-zinc-500">Ingen forhåndsskjemaer kreves</span>
+              <span className="text-zinc-500">Klar til bruk</span>
             </div>
             <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs font-mono">
               {USER_EXAMPLE_PROMPTS.map((pText, pIdx) => {
@@ -833,7 +948,7 @@ ${project.strategy.recommendedHashtags.join(" ")}
                     key={pIdx}
                     type="button"
                     onClick={() => setPrompt(clean)}
-                    className="shrink-0 px-3 py-1.5 bg-[#18181A] hover:bg-[#252528] hover:border-[#FF3B00] border border-[#2D2D32] text-zinc-200 rounded cursor-pointer transition-all whitespace-nowrap text-[11px]"
+                    className="shrink-0 px-3.5 py-2 bg-[#18181A] hover:bg-[#FF3B00] hover:text-black hover:border-[#FF3B00] hover:scale-105 active:scale-95 border border-[#2D2D32] text-zinc-200 rounded cursor-pointer transition-all whitespace-nowrap text-[11px] font-medium shadow-sm"
                   >
                     {pText}
                   </button>
@@ -936,10 +1051,10 @@ ${project.strategy.recommendedHashtags.join(" ")}
                     setPlatform(preset.id as any);
                     setSelectedPresetId(preset.id);
                   }}
-                  className={`p-2 border text-center transition-all cursor-pointer rounded ${
+                  className={`p-2.5 border text-center transition-all cursor-pointer rounded hover:scale-105 active:scale-95 ${
                     isSelected
-                      ? "bg-[#1C1C1E] border-[#FF3B00] text-white shadow-md shadow-[#FF3B00]/10"
-                      : "bg-[#101012] border-[#262626] text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
+                      ? "bg-[#1C1C1E] border-[#FF3B00] text-white shadow-md shadow-[#FF3B00]/20 font-bold"
+                      : "bg-[#101012] border-[#262626] text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"
                   }`}
                 >
                   <div className="text-[11px] font-bold truncate">{preset.label}</div>
@@ -954,8 +1069,12 @@ ${project.strategy.recommendedHashtags.join(" ")}
         <div className="pt-2 flex flex-col sm:flex-row gap-3">
           <button
             onClick={handleStartProduction}
-            disabled={isGenerating}
-            className="flex-1 py-3.5 px-6 bg-[#FF3B00] hover:bg-[#e03400] disabled:opacity-50 text-black font-black uppercase text-sm font-mono tracking-wider flex items-center justify-center gap-3 cursor-pointer transition-all shadow-xl shadow-[#FF3B00]/20 rounded"
+            disabled={isGenerating || prompt.trim().length < 2}
+            className={`flex-1 py-4 px-6 font-black uppercase text-xs sm:text-sm font-mono tracking-wider flex items-center justify-center gap-3 transition-all rounded shadow-xl ${
+              prompt.trim().length >= 2
+                ? "bg-[#FF3B00] hover:bg-white text-black hover:scale-[1.02] active:scale-[0.98] shadow-[#FF3B00]/30 cursor-pointer"
+                : "bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700 opacity-60"
+            }`}
           >
             {isGenerating ? (
               <>
@@ -965,7 +1084,7 @@ ${project.strategy.recommendedHashtags.join(" ")}
             ) : (
               <>
                 <Sparkles className="w-5 h-5 text-black" />
-                <span>Kjør Full Videoproduksjon Fra Tekst</span>
+                <span>Kjør Full Videoproduksjon Fra Tekst ➔</span>
               </>
             )}
           </button>
@@ -974,7 +1093,7 @@ ${project.strategy.recommendedHashtags.join(" ")}
           <button
             type="button"
             onClick={handleFetchVariants}
-            className="py-3 px-4 bg-[#1C1C1E] hover:bg-[#252528] border border-[#FF3B00]/60 text-white font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-colors rounded"
+            className="py-3 px-4 bg-[#1C1C1E] hover:bg-[#252528] border border-[#FF3B00]/60 hover:border-[#FF3B00] text-white font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all hover:scale-105 active:scale-95 rounded"
           >
             <SplitSquareVertical className="w-4 h-4 text-[#FF3B00]" />
             <span>Generer 10 Varianter</span>
@@ -984,7 +1103,7 @@ ${project.strategy.recommendedHashtags.join(" ")}
           <button
             type="button"
             onClick={handleFetchOmnichannel}
-            className="py-3 px-4 bg-[#1C1C1E] hover:bg-[#252528] border border-cyan-500/60 text-white font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-colors rounded"
+            className="py-3 px-4 bg-[#1C1C1E] hover:bg-[#252528] border border-cyan-500/60 hover:border-cyan-400 text-white font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all hover:scale-105 active:scale-95 rounded"
           >
             <Globe className="w-4 h-4 text-cyan-400" />
             <span>Én Idé → Alle Plattformer</span>
@@ -1061,7 +1180,36 @@ ${project.strategy.recommendedHashtags.join(" ")}
 
       {/* Deliverables Workspace */}
       {project && (
-        <div className="space-y-6">
+        <div ref={deliverablesSectionRef} id="deliverables-section" className="space-y-6">
+          {/* AI Production Success Alert Banner */}
+          <div className="p-4 bg-gradient-to-r from-emerald-950/80 via-[#16161A] to-emerald-950/80 border-2 border-emerald-500/70 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs font-mono shadow-2xl animate-fade-in">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center text-emerald-400 shrink-0">
+                <Sparkles className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div>
+                <div className="text-white font-black uppercase flex items-center gap-2 tracking-wide">
+                  <span>✅ AI-PRODUKSJON FULLFØRT! FORHÅNDSVISNINGEN ER KLAR</span>
+                  <span className="text-[10px] px-2 py-0.5 bg-emerald-500 text-black font-black rounded">
+                    LIVE
+                  </span>
+                </div>
+                <p className="text-zinc-300 text-[11px] mt-0.5">
+                  Klikk direkte på videoskjermen under for å starte/stoppe avspilling. Du kan også bytte til ferdig rendret MP4 eller redigere storyboardet.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={togglePlayback}
+                className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase text-xs font-mono rounded-lg flex items-center gap-2 transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-lg shadow-emerald-500/30"
+              >
+                {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                <span>{isPlaying ? "Pause Video" : "Spill av Nå ➔"}</span>
+              </button>
+            </div>
+          </div>
           {/* Global Campaign Approval Bar */}
           <div className="bg-[#121215] border-2 border-emerald-500/70 p-4 sm:p-5 rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl shadow-emerald-950/20">
             <div className="flex items-center gap-3">
@@ -1253,20 +1401,6 @@ ${project.strategy.recommendedHashtags.join(" ")}
             ];
             const currentTheme = sceneThemes[activeSceneIndex % sceneThemes.length];
 
-            const togglePlayback = () => {
-              if (playerMode === "mp4" && renderedVideoRef.current) {
-                if (renderedVideoRef.current.paused) {
-                  renderedVideoRef.current.play().catch(() => {});
-                  setIsPlaying(true);
-                } else {
-                  renderedVideoRef.current.pause();
-                  setIsPlaying(false);
-                }
-              } else {
-                setIsPlaying(!isPlaying);
-              }
-            };
-
             return (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               {/* Player Stage */}
@@ -1274,13 +1408,13 @@ ${project.strategy.recommendedHashtags.join(" ")}
                 <div className="bg-[#141416] border border-[#262626] p-4 space-y-3 rounded-lg shadow-xl">
                   <div className="flex items-center justify-between border-b border-[#252528] pb-2">
                     {/* Player Mode Switcher */}
-                    <div className="flex items-center gap-1 bg-[#1C1C1E] p-0.5 rounded border border-[#333]">
+                    <div className="flex items-center gap-1 bg-[#1C1C1E] p-1 rounded-lg border border-[#333]">
                       <button
                         type="button"
                         onClick={() => setPlayerMode("interactive")}
-                        className={`px-2.5 py-1 text-[10px] font-mono font-bold rounded transition-colors cursor-pointer ${
+                        className={`px-3 py-1.5 text-[10px] font-mono font-bold rounded transition-all cursor-pointer hover:scale-105 active:scale-95 ${
                           playerMode === "interactive"
-                            ? "bg-[#FF3B00] text-black"
+                            ? "bg-[#FF3B00] text-black shadow-md shadow-[#FF3B00]/30"
                             : "text-zinc-400 hover:text-white"
                         }`}
                       >
@@ -1289,20 +1423,27 @@ ${project.strategy.recommendedHashtags.join(" ")}
                       <button
                         type="button"
                         onClick={() => {
-                          if (renderedVideoUrl) setPlayerMode("mp4");
+                          if (renderedVideoUrl) {
+                            setPlayerMode("mp4");
+                          } else {
+                            handleRenderMP4();
+                          }
                         }}
-                        disabled={!renderedVideoUrl}
-                        className={`px-2.5 py-1 text-[10px] font-mono font-bold rounded transition-colors flex items-center gap-1 cursor-pointer ${
+                        className={`px-3 py-1.5 text-[10px] font-mono font-bold rounded transition-all flex items-center gap-1 cursor-pointer hover:scale-105 active:scale-95 ${
                           playerMode === "mp4"
-                            ? "bg-emerald-500 text-black font-bold"
+                            ? "bg-emerald-500 text-black font-bold shadow-md shadow-emerald-500/30"
                             : renderedVideoUrl
-                            ? "text-zinc-300 hover:text-white"
-                            : "text-zinc-600 opacity-50 cursor-not-allowed"
+                            ? "text-zinc-200 hover:text-white bg-emerald-950/40 border border-emerald-500/30"
+                            : "text-zinc-300 hover:text-white hover:bg-zinc-800"
                         }`}
-                        title={renderedVideoUrl ? "Spill av ekte rendret MP4" : "Rendre video først for å se ferdig MP4"}
+                        title={renderedVideoUrl ? "Spill av ekte rendret MP4" : "Trykk for å generere ekte MP4 video nå"}
                       >
                         <span>🎬 Rendret MP4</span>
-                        {renderedVideoUrl && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
+                        {renderedVideoUrl ? (
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        ) : isRendering ? (
+                          <RefreshCw className="w-3 h-3 animate-spin text-[#FF3B00]" />
+                        ) : null}
                       </button>
 
                       {!renderedVideoUrl && (
@@ -1310,7 +1451,7 @@ ${project.strategy.recommendedHashtags.join(" ")}
                           type="button"
                           onClick={() => handleRenderMP4()}
                           disabled={isRendering}
-                          className="px-2.5 py-1 text-[10px] font-mono font-bold bg-[#FF3B00] hover:bg-[#e03400] text-black rounded transition-colors flex items-center gap-1 cursor-pointer shadow-sm shadow-[#FF3B00]/30"
+                          className="px-2.5 py-1.5 text-[10px] font-mono font-bold bg-[#FF3B00] hover:bg-white text-black rounded transition-all flex items-center gap-1 cursor-pointer shadow-sm shadow-[#FF3B00]/30 hover:scale-105 active:scale-95"
                           title="Trykk her for å rendre videoen til ekte MP4 og spille den av direkte i appen"
                         >
                           {isRendering ? (
@@ -1370,6 +1511,23 @@ ${project.strategy.recommendedHashtags.join(" ")}
                     </div>
                   </div>
 
+                  {/* MP4 Ready Notification Callout */}
+                  {renderedVideoUrl && playerMode !== "mp4" && (
+                    <div className="p-3 bg-gradient-to-r from-emerald-950 via-[#16161A] to-emerald-950 border border-emerald-500/70 rounded-xl flex items-center justify-between gap-3 text-xs font-mono text-emerald-300 shadow-xl">
+                      <div className="flex items-center gap-2.5">
+                        <Film className="w-4 h-4 text-emerald-400 shrink-0 animate-bounce" />
+                        <span className="font-bold">Ekte H.264 MP4-video er ferdig rendret!</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setPlayerMode("mp4")}
+                        className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase text-[10px] rounded-lg transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-md shadow-emerald-500/30 shrink-0"
+                      >
+                        Se MP4 Spiller ➔
+                      </button>
+                    </div>
+                  )}
+
                   {/* Player Canvas Display / MP4 Player Display */}
                   {renderedVideoUrl && playerMode === "mp4" ? (
                     <div className="relative aspect-[9/16] bg-black border-2 border-emerald-500/40 rounded-lg overflow-hidden flex items-center justify-center shadow-2xl group">
@@ -1398,6 +1556,7 @@ ${project.strategy.recommendedHashtags.join(" ")}
                             muted={isMuted}
                             playsInline
                             loop
+                            onClick={togglePlayback}
                             onPlay={() => setIsPlaying(true)}
                             onPause={() => setIsPlaying(false)}
                             onTimeUpdate={(e) => {
@@ -1408,7 +1567,7 @@ ${project.strategy.recommendedHashtags.join(" ")}
                             onError={() => {
                               setVideoPlaybackError("Klarte ikke laste MP4-strømmen. Trykk nedenfor for å generere på nytt.");
                             }}
-                            className="w-full h-full object-contain"
+                            className="w-full h-full object-contain cursor-pointer"
                           />
 
                           {/* Quick Audio & Status Overlay */}
@@ -1422,7 +1581,7 @@ ${project.strategy.recommendedHashtags.join(" ")}
                                   renderedVideoRef.current.muted = nextMuted;
                                 }
                               }}
-                              className="px-2.5 py-1 bg-black/80 hover:bg-black text-white text-[10px] font-mono rounded-full border border-white/20 backdrop-blur-md flex items-center gap-1.5 transition-all cursor-pointer shadow-lg hover:border-[#FF3B00]"
+                              className="px-2.5 py-1 bg-black/80 hover:bg-black text-white text-[10px] font-mono rounded-full border border-white/20 backdrop-blur-md flex items-center gap-1.5 transition-all cursor-pointer shadow-lg hover:border-[#FF3B00] hover:scale-105 active:scale-95"
                               title={isMuted ? "Skru på video-lyd" : "Skru av video-lyd"}
                             >
                               {isMuted ? (
@@ -1449,11 +1608,31 @@ ${project.strategy.recommendedHashtags.join(" ")}
                     </div>
                   ) : (
                     <div
-                      className={`relative aspect-[9/16] bg-gradient-to-br ${currentTheme.bg} border-2 border-white/10 rounded-lg overflow-hidden flex flex-col justify-between p-4 shadow-2xl transition-all duration-700 select-none`}
+                      onClick={togglePlayback}
+                      className={`relative aspect-[9/16] bg-gradient-to-br ${currentTheme.bg} border-2 border-white/20 hover:border-[#FF3B00] rounded-xl overflow-hidden flex flex-col justify-between p-4 shadow-2xl transition-all duration-500 select-none cursor-pointer group`}
                       style={{
                         boxShadow: `0 0 35px ${currentTheme.glow}`,
                       }}
+                      title="Klikk hvor som helst på videoen for å spille av eller pause"
                     >
+                      {/* Big Interactive Central Play/Pause Overlay */}
+                      <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none transition-all">
+                        {!isPlaying ? (
+                          <div className="flex flex-col items-center gap-2 animate-fade-in">
+                            <div className="w-16 h-16 rounded-full bg-black/80 border-2 border-[#FF3B00] text-[#FF3B00] flex items-center justify-center shadow-[0_0_35px_rgba(255,59,0,0.6)] group-hover:scale-110 group-hover:bg-[#FF3B00] group-hover:text-black transition-all duration-200">
+                              <Play className="w-8 h-8 fill-current ml-1" />
+                            </div>
+                            <span className="px-3 py-1 rounded-full bg-black/80 border border-white/20 text-[10px] font-mono font-bold text-white uppercase tracking-wider backdrop-blur-md shadow-lg group-hover:border-[#FF3B00] transition-colors">
+                              Klikk for å spille av video ➔
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity px-3 py-1.5 rounded-full bg-black/70 border border-white/20 text-[10px] font-mono text-white flex items-center gap-1.5 shadow-lg backdrop-blur-md">
+                            <Pause className="w-3.5 h-3.5 text-[#FF3B00]" />
+                            <span>Trykk for å pause</span>
+                          </div>
+                        )}
+                      </div>
                       {/* Safe zones overlay */}
                       {showSafeZones && (
                         <div className="absolute inset-0 pointer-events-none z-20">
@@ -1590,11 +1769,32 @@ ${project.strategy.recommendedHashtags.join(" ")}
                   <div className="flex items-center justify-between gap-2 pt-2">
                     <button
                       type="button"
-                      onClick={togglePlayback}
-                      className="p-2.5 bg-[#FF3B00] text-black rounded-lg hover:bg-[#e03400] cursor-pointer transition-colors shadow-md"
-                      title={isPlaying ? "Pause" : "Spill av"}
+                      onClick={() => setActiveSceneIndex(Math.max(0, activeSceneIndex - 1))}
+                      disabled={activeSceneIndex === 0}
+                      className="p-2.5 bg-[#1C1C1E] text-zinc-300 hover:text-white hover:border-zinc-500 border border-[#333] rounded-lg cursor-pointer transition-all hover:scale-105 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+                      title="Forrige scene"
                     >
-                      {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                      <SkipBack className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={togglePlayback}
+                      className="p-2.5 px-4 bg-[#FF3B00] hover:bg-white text-black font-black rounded-lg cursor-pointer transition-all hover:scale-105 active:scale-95 shadow-lg shadow-[#FF3B00]/30 flex items-center gap-1.5"
+                      title={isPlaying ? "Pause avspilling" : "Start avspilling"}
+                    >
+                      {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-current" />}
+                      <span className="text-[11px] font-mono uppercase">{isPlaying ? "Pause" : "Spill"}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveSceneIndex(Math.min(project.scenes.length - 1, activeSceneIndex + 1))}
+                      disabled={activeSceneIndex >= project.scenes.length - 1}
+                      className="p-2.5 bg-[#1C1C1E] text-zinc-300 hover:text-white hover:border-zinc-500 border border-[#333] rounded-lg cursor-pointer transition-all hover:scale-105 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+                      title="Neste scene"
+                    >
+                      <SkipForward className="w-4 h-4" />
                     </button>
 
                     <div className="flex-1 px-2">
@@ -1618,9 +1818,9 @@ ${project.strategy.recommendedHashtags.join(" ")}
                     <button
                       type="button"
                       onClick={() => setSpeechVoiceEnabled(!speechVoiceEnabled)}
-                      className={`px-2.5 py-1.5 text-[10px] font-mono rounded-lg border flex items-center gap-1.5 cursor-pointer transition-colors ${
+                      className={`px-2.5 py-2 text-[10px] font-mono rounded-lg border flex items-center gap-1.5 cursor-pointer transition-all hover:scale-105 active:scale-95 ${
                         speechVoiceEnabled
-                          ? "bg-[#FF3B00]/20 border-[#FF3B00] text-[#FF3B00]"
+                          ? "bg-[#FF3B00]/25 border-[#FF3B00] text-[#FF3B00] font-bold"
                           : "bg-[#1C1C1E] border-[#333] text-zinc-400 hover:text-white"
                       }`}
                       title="Automatisk opplesning av voiceover via nettleserens talesyntese"
@@ -1633,9 +1833,9 @@ ${project.strategy.recommendedHashtags.join(" ")}
                   {/* Export Actions */}
                   <div className="pt-3 border-t border-[#222] space-y-2">
                     <button
-                      onClick={handleRenderMP4}
+                      onClick={() => handleRenderMP4()}
                       disabled={isRendering}
-                      className="w-full py-2.5 bg-[#1C1C1E] border border-[#FF3B00] hover:bg-[#FF3B00] text-white hover:text-black font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-colors rounded"
+                      className="w-full py-3 bg-[#1C1C1E] border border-[#FF3B00] hover:bg-[#FF3B00] text-white hover:text-black font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] rounded shadow-sm"
                     >
                       {isRendering ? (
                         <>
@@ -1645,7 +1845,7 @@ ${project.strategy.recommendedHashtags.join(" ")}
                       ) : (
                         <>
                           <Film className="w-4 h-4 text-[#FF3B00]" />
-                          <span>Rendre Video (FFmpeg MP4)</span>
+                          <span>Rendre Video (FFmpeg MP4) ➔</span>
                         </>
                       )}
                     </button>
@@ -1654,7 +1854,7 @@ ${project.strategy.recommendedHashtags.join(" ")}
                       <a
                         href={renderedVideoUrl}
                         download={`SPARK_${project.platform}.mp4`}
-                        className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-colors rounded text-center"
+                        className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] rounded text-center shadow-lg shadow-emerald-950/40"
                       >
                         <Download className="w-4 h-4" />
                         <span>Last ned ferdig rendret MP4</span>
@@ -1663,7 +1863,7 @@ ${project.strategy.recommendedHashtags.join(" ")}
 
                     <button
                       onClick={handleDownloadFullDeliveryZip}
-                      className="w-full py-2 bg-[#141416] hover:bg-[#202024] border border-[#333] text-zinc-300 font-mono text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-colors rounded"
+                      className="w-full py-2.5 bg-[#141416] hover:bg-[#202024] hover:border-[#FF3B00] border border-[#333] text-zinc-300 hover:text-white font-mono text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] rounded"
                     >
                       <Download className="w-3.5 h-3.5 text-[#FF3B00]" />
                       <span>Last ned Full Kampanjepakke (ZIP)</span>
