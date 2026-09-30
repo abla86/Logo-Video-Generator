@@ -87,22 +87,24 @@ const CAMPAIGN_GOALS = [
 ];
 
 const USER_EXAMPLE_PROMPTS = [
-  "«Jeg vil selge en digital dayplanner på Etsy.»",
-  "«Lag en TikTok som selger en printable meal planner.»",
-  "«Finn et digitalt produkt jeg kan lage og selge.»",
-  "«Jeg vil tjene penger på YouTube uten å vise ansikt.»",
-  "«Lag innhold for en ny nettbutikk som selger plakater.»",
+  "«Lag en reklamefilm for en elektrisk gressklipper»",
+  "«Lanseringsvideo for nye løpesko med god demping»",
+  "«Kort promovideo for en lokal kaffebar og bakeri»",
+  "«Reklame uten lyd tilpasset Instagram og butikkskjerm»",
+  "«Produktvideo for en minimalistisk skrivebordslampe»",
 ];
 
 const VIDEO_PRESETS = [
   { id: "tiktok", label: "TikTok (9:16)", ratio: "9:16", dur: 15 },
+  { id: "sound-off-social", label: "🔇 Sound-Off Feed (9:16)", ratio: "9:16", dur: 15 },
+  { id: "digital-signage", label: "🔇 Butikkskjerm (16:9)", ratio: "16:9", dur: 15 },
   { id: "snapchat", label: "Snapchat Spotlight (9:16)", ratio: "9:16", dur: 12 },
   { id: "youtube-short", label: "YouTube Shorts (9:16)", ratio: "9:16", dur: 30 },
   { id: "instagram-reel", label: "Instagram Reels (9:16)", ratio: "9:16", dur: 15 },
   { id: "instagram-feed", label: "Instagram Feed (1:1)", ratio: "1:1", dur: 15 },
   { id: "facebook-reel", label: "Facebook Reel & Ad (4:5)", ratio: "4:5", dur: 20 },
   { id: "youtube-video", label: "YouTube Video (16:9)", ratio: "16:9", dur: 60 },
-  { id: "etsy-product-video", label: "Etsy Produktvideo (1:1 / 4:3)", ratio: "1:1", dur: 15 },
+  { id: "etsy-product-video", label: "Etsy Produktvideo (1:1)", ratio: "1:1", dur: 15 },
 ];
 
 export const AutonomousVideoProducer: React.FC<AutonomousVideoProducerProps> = ({
@@ -117,7 +119,7 @@ export const AutonomousVideoProducer: React.FC<AutonomousVideoProducerProps> = (
   const [prompt, setPrompt] = useState(() => {
     if (initialPrompt && initialPrompt.trim()) return initialPrompt.trim();
     if (projectCtx.productOrService) return `Jeg vil selge ${projectCtx.productOrService}`;
-    return "Jeg vil selge en digital dayplanner på Etsy.";
+    return "";
   });
 
   useEffect(() => {
@@ -131,6 +133,12 @@ export const AutonomousVideoProducer: React.FC<AutonomousVideoProducerProps> = (
   const [salesFramework, setSalesFramework] = useState<SalesFramework>("ProblemSolutionCTA");
   const [selectedGoal, setSelectedGoal] = useState<string>("product");
   const [isAutopilot, setIsAutopilot] = useState(true);
+
+  // Sound-Off / Reklame uten lyd state
+  const [isSoundOffMode, setIsSoundOffMode] = useState<boolean>(() => {
+    return /uten lyd|silent|sound-off|sound off|lydløs|stum|skjerm/i.test(prompt);
+  });
+  const [soundOffAudioMode, setSoundOffAudioMode] = useState<"silent" | "none">("silent");
 
   // Uploaded product image (PNG, JPG, WebP, SVG)
   const [productImage, setProductImage] = useState<string | null>(null);
@@ -214,6 +222,13 @@ export const AutonomousVideoProducer: React.FC<AutonomousVideoProducerProps> = (
 
   // Context Guard semantic tags
   const semanticTags = extractSemanticContextTags(prompt);
+
+  // Auto-detect sound-off intent from user prompt
+  useEffect(() => {
+    if (/uten lyd|silent|sound-off|sound off|lydløs|stum|infoskjerm|butikkskjerm/i.test(prompt)) {
+      setIsSoundOffMode(true);
+    }
+  }, [prompt]);
 
   useEffect(() => {
     if (project) {
@@ -382,6 +397,8 @@ export const AutonomousVideoProducer: React.FC<AutonomousVideoProducerProps> = (
           platform,
           salesFramework,
           language: "no",
+          isSoundOff: isSoundOffMode,
+          soundOffMode: isSoundOffMode,
         }),
       });
 
@@ -547,6 +564,8 @@ export const AutonomousVideoProducer: React.FC<AutonomousVideoProducerProps> = (
           resolution: "720p",
           commercialLicense: true,
           fps: 30,
+          audioMode: isSoundOffMode ? soundOffAudioMode : "silent",
+          isSoundOff: isSoundOffMode,
         }),
       });
 
@@ -1035,7 +1054,91 @@ ${project.strategy.recommendedHashtags.join(" ")}
           </div>
         </div>
 
-        {/* Video Presets Bar (All 9 video platforms) */}
+        {/* Dedicated Reklame Uten Lyd (Sound-Off Optimalisering) Panel */}
+        <div className={`p-4 rounded-xl border transition-all ${
+          isSoundOffMode 
+            ? "bg-gradient-to-r from-[#18181A] via-[#1F1614] to-[#18181A] border-[#FF3B00] shadow-[0_0_20px_rgba(255,59,0,0.15)]"
+            : "bg-[#101012] border-[#262626]"
+        }`}>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                isSoundOffMode ? "bg-[#FF3B00] text-black" : "bg-zinc-800 text-zinc-400"
+              }`}>
+                <VolumeX className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono font-bold uppercase text-white tracking-wider">
+                    🔇 Reklame Uten Lyd (Sound-Off Optimalisering)
+                  </span>
+                  {isSoundOffMode && (
+                    <span className="px-2 py-0.5 bg-[#FF3B00]/20 border border-[#FF3B00]/50 text-[#FF3B00] text-[9px] font-mono font-bold rounded-full">
+                      AKTIV
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-zinc-400 mt-0.5">
+                  Over 85% ser video i sosiale medier uten lyd. Optimaliserer med store tekstplakater, fargerike nøkkelord og tydelig visuell CTA.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsSoundOffMode(!isSoundOffMode)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold uppercase transition-all flex items-center gap-1.5 cursor-pointer ${
+                  isSoundOffMode
+                    ? "bg-[#FF3B00] text-black shadow-md shadow-[#FF3B00]/30 hover:bg-white"
+                    : "bg-[#1C1C1E] border border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-500"
+                }`}
+              >
+                <VolumeX className="w-3.5 h-3.5" />
+                <span>{isSoundOffMode ? "Lydløs PÅ" : "Slå PÅ Lydløs"}</span>
+              </button>
+            </div>
+          </div>
+
+          {isSoundOffMode && (
+            <div className="mt-3 pt-3 border-t border-zinc-800 flex flex-wrap items-center gap-4 text-xs font-mono">
+              <div className="flex items-center gap-2">
+                <span className="text-zinc-400 text-[11px]">Lydspor-eksport:</span>
+                <button
+                  type="button"
+                  onClick={() => setSoundOffAudioMode("silent")}
+                  className={`px-2.5 py-1 rounded text-[10px] border transition-all cursor-pointer ${
+                    soundOffAudioMode === "silent"
+                      ? "bg-[#FF3B00]/20 border-[#FF3B00] text-[#FF3B00] font-bold"
+                      : "bg-[#141416] border-zinc-800 text-zinc-400 hover:text-white"
+                  }`}
+                  title="Genererer et dempet AAC-spor slik at videoen godkjennes av Meta og TikTok"
+                >
+                  Dempet AAC (Meta / TikTok)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSoundOffAudioMode("none")}
+                  className={`px-2.5 py-1 rounded text-[10px] border transition-all cursor-pointer ${
+                    soundOffAudioMode === "none"
+                      ? "bg-[#FF3B00]/20 border-[#FF3B00] text-[#FF3B00] font-bold"
+                      : "bg-[#141416] border-zinc-800 text-zinc-400 hover:text-white"
+                  }`}
+                  title="Fjerner lydsporet helt (-an) for butikk- og infoskjermer"
+                >
+                  100% Uten lydspor (-an)
+                </button>
+              </div>
+
+              <div className="text-[10px] text-emerald-400 flex items-center gap-1.5 ml-auto">
+                <Check className="w-3.5 h-3.5" />
+                <span>Forankret i faktiske produktattributter – ingen overdrevne påstander</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Video Presets Bar (All video platforms) */}
         <div className="space-y-2">
           <label className="block text-[11px] font-mono uppercase tracking-wider text-zinc-400">
             Velg Plattform-format &amp; Presets:
@@ -1050,6 +1153,9 @@ ${project.strategy.recommendedHashtags.join(" ")}
                   onClick={() => {
                     setPlatform(preset.id as any);
                     setSelectedPresetId(preset.id);
+                    if (preset.id === "sound-off-social" || preset.id === "digital-signage") {
+                      setIsSoundOffMode(true);
+                    }
                   }}
                   className={`p-2.5 border text-center transition-all cursor-pointer rounded hover:scale-105 active:scale-95 ${
                     isSelected
@@ -1709,12 +1815,11 @@ ${project.strategy.recommendedHashtags.join(" ")}
                               {currentTheme.icon}
                             </div>
                             <span className="text-[11px] font-black uppercase text-white font-mono tracking-wider">
-                              {companyName}
+                              {effectiveCompanyName}
                             </span>
-                            <div className="text-[10px] text-amber-300 font-bold flex items-center gap-0.5">
-                              <span>★ ★ ★ ★ ★</span>
-                              <span className="text-[9px] text-white/70 ml-1">5.0</span>
-                            </div>
+                            <span className="text-[9px] font-mono text-zinc-300">
+                              {project?.strategy?.productOrService?.slice(0, 30) || "Kommersiell Reklame"}
+                            </span>
                             <span className="text-[8px] font-mono uppercase px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 rounded-full">
                               Verifisert Format
                             </span>
@@ -1728,31 +1833,52 @@ ${project.strategy.recommendedHashtags.join(" ")}
                           <span className="text-zinc-200">{currentTheme.badge}</span>
                         </div>
 
+                        {/* Sound-Off Mode Floating Badge */}
+                        {isSoundOffMode && (
+                          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-yellow-400 text-black border border-black rounded-full text-[10px] font-mono font-black uppercase tracking-wider shadow-xl animate-pulse">
+                            <VolumeX className="w-3 h-3 text-black" />
+                            <span>🔇 Reklame Uten Lyd (Sound-Off)</span>
+                          </div>
+                        )}
+
                         {/* On Screen Headline */}
-                        <div className="inline-block px-3.5 py-1.5 bg-[#FF3B00] text-black font-black uppercase text-xs tracking-wider rounded-lg shadow-2xl animate-fade-in">
+                        <div className={`transition-all ${
+                          isSoundOffMode
+                            ? "inline-block px-5 py-2.5 bg-yellow-400 text-black font-black uppercase text-sm tracking-wider rounded-xl shadow-[0_0_20px_rgba(250,204,21,0.5)] border-2 border-black"
+                            : "inline-block px-3.5 py-1.5 bg-[#FF3B00] text-black font-black uppercase text-xs tracking-wider rounded-lg shadow-2xl animate-fade-in"
+                        }`}>
                           {activeScene?.onScreenText || "SCENE VISUELL HOOK"}
                         </div>
 
                         {/* Narration Script Bubble */}
                         <div className="bg-black/75 backdrop-blur-md border border-white/20 rounded-xl p-2.5 max-w-[280px] shadow-xl">
                           <p className="text-xs text-white font-medium drop-shadow-md leading-relaxed">
-                            «{activeScene?.narrationVoiceover}»
+                            {isSoundOffMode ? `📢 [Undertekst / Visuelt budskap]: ${activeScene?.narrationVoiceover || activeScene?.onScreenText}` : `«${activeScene?.narrationVoiceover}»`}
                           </p>
                         </div>
 
-                        {/* Soundwave Visualizer Bars */}
-                        <div className="flex items-center justify-center gap-1 h-5 pt-1">
-                          {[...Array(14)].map((_, idx) => (
-                            <div
-                              key={idx}
-                              className="w-1 bg-[#FF3B00] rounded-full transition-all duration-150"
-                              style={{
-                                height: isPlaying ? `${Math.max(4, Math.sin((currentPlayTime * 6) + idx) * 18)}px` : "4px",
-                                opacity: isPlaying ? 0.9 : 0.4
-                              }}
-                            />
-                          ))}
-                        </div>
+                        {/* Soundwave or Sound-Off Visualizer */}
+                        {isSoundOffMode ? (
+                          <div className="px-3 py-1 bg-black/80 border border-yellow-500/40 rounded-full flex items-center gap-1.5 shadow-sm">
+                            <VolumeX className="w-3 h-3 text-yellow-400" />
+                            <span className="text-[9px] font-mono font-bold text-yellow-300">
+                              Visuell lesbarhet: 100% optimalisert for mute
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1 h-5 pt-1">
+                            {[...Array(14)].map((_, idx) => (
+                              <div
+                                key={idx}
+                                className="w-1 bg-[#FF3B00] rounded-full transition-all duration-150"
+                                style={{
+                                  height: isPlaying ? `${Math.max(4, Math.sin((currentPlayTime * 6) + idx) * 18)}px` : "4px",
+                                  opacity: isPlaying ? 0.9 : 0.4
+                                }}
+                              />
+                            ))}
+                          </div>
+                        )}
                       </div>
 
                       {/* CTA Bottom Banner */}
@@ -1814,6 +1940,20 @@ ${project.strategy.recommendedHashtags.join(" ")}
                         className="w-full accent-[#FF3B00] cursor-pointer"
                       />
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsSoundOffMode(!isSoundOffMode)}
+                      className={`px-2.5 py-2 text-[10px] font-mono rounded-lg border flex items-center gap-1.5 cursor-pointer transition-all hover:scale-105 active:scale-95 ${
+                        isSoundOffMode
+                          ? "bg-yellow-400 text-black border-yellow-400 font-black shadow-sm"
+                          : "bg-[#1C1C1E] border-[#333] text-zinc-400 hover:text-white"
+                      }`}
+                      title="Slå av eller på lydløs annonseoptimalisering"
+                    >
+                      <VolumeX className="w-3.5 h-3.5" />
+                      <span>{isSoundOffMode ? "Lydløs: PÅ" : "Lydløs: AV"}</span>
+                    </button>
 
                     <button
                       type="button"

@@ -36,19 +36,86 @@ function getGenAI(): GoogleGenAI {
   });
 }
 
-// In-memory cost telemetry and rate limiting state
+// Central model configuration
+const AI_MODELS = {
+  textGeneration: "gemini-3.8-flash",
+  complexReasoning: "gemini-3.1-pro-preview",
+  imageGeneration: "gemini-3.1-flash-lite-image",
+  highQualityImage: "gemini-3.1-flash-image",
+  videoGeneration: "veo-3.1-lite-generate-preview",
+};
+
+// Real cost telemetry and rate limiting state (starts from zero, real counter accumulation)
 const telemetryState = {
-  dailyTokensUsed: 8200,
-  monthlyTokensUsed: 64500,
-  dailySpendUSD: 0.04,
-  monthlySpendUSD: 0.28,
+  dailyTokensUsed: 0,
+  monthlyTokensUsed: 0,
+  dailySpendUSD: 0.0,
+  monthlySpendUSD: 0.0,
+  estimatedSpendUSD: 0.0,
+  providerReportedSpendUSD: 0.0,
   dailyLimitUSD: 5.0,
   monthlyLimitUSD: 50.0,
-  isFreeLocalMode: true,
-  zeroCostFilter: true,
-  cacheHits: 48,
-  totalJobsProcessed: 22,
+  isFreeLocalMode: !process.env.GEMINI_API_KEY,
+  zeroCostFilter: false,
+  cacheHits: 0,
+  totalJobsProcessed: 0,
+  isEstimated: true,
 };
+
+// Central truthfulness and grounding mandate
+const STRICT_GROUNDING_INSTRUCTION = `
+CRITICAL FACTUAL GROUNDING AND TRUTHFULNESS MANDATE:
+- Never invent product features, pages, claims, specifications, testimonials, results, certifications, statistics, or customer outcomes.
+- Marketing assets must be grounded exclusively in the user's actual product, service, and provided text or image.
+- AI-generated presentation scenes may frame the product, but the product itself must remain visually and factually faithful to the uploaded source.
+- Clearly distinguish factual product information from creative marketing suggestions and predictions.
+- Never guarantee sales, conversion, ranking, or revenue.
+`;
+
+function buildLogoPrompt(params: {
+  companyName: string;
+  industry?: string;
+  description?: string;
+  style?: string;
+  colorPalette?: string;
+  symbolConcept?: string;
+}): string {
+  const parts = [
+    `Professional logo emblem design for "${params.companyName}".`,
+    params.industry ? `Industry: ${params.industry}.` : "",
+    params.style ? `Style: ${params.style}.` : "Style: Modern Minimalist vector.",
+    params.colorPalette ? `Color scheme: ${params.colorPalette}.` : "",
+    params.symbolConcept ? `Symbol concept: ${params.symbolConcept}.` : "",
+    params.description ? `Brand brief: ${params.description}.` : "",
+    "High contrast vector emblem, centered iconic mark, sharp geometry, clean aesthetic background, commercial identity ready, no clutter or extraneous text.",
+  ];
+  return parts.filter(Boolean).join(" ");
+}
+
+function buildVideoBriefPrompt(brief: {
+  productOrService: string;
+  companyName?: string;
+  industry?: string;
+  targetAudience?: string;
+  platform?: string;
+  salesFramework?: string;
+  language?: string;
+  isSoundOff?: boolean;
+}): string {
+  return `You are a professional commercial video director.
+Create a structured commercial video storyboard strictly grounded in this brief:
+Product / Service: "${brief.productOrService}"
+Company Name: "${brief.companyName || "Brand"}"
+Industry: "${brief.industry || "General"}"
+Target Audience: "${brief.targetAudience || "Prospective customers"}"
+Target Platform: ${brief.platform || "tiktok"}
+Sales Framework: ${brief.salesFramework || "ProblemSolutionCTA"}
+Language: ${brief.language === "en" ? "English" : "Norwegian (Bokmål)"}
+${brief.isSoundOff ? "Sound-Off Requirement: Optimized for silent video viewing (over 85% view on mute). Bold readable on-screen kinetic typography." : ""}
+
+${STRICT_GROUNDING_INSTRUCTION}
+`;
+}
 
 function escapeXml(str: string): string {
   return (str || "")
@@ -1408,6 +1475,13 @@ Over 85% of mobile users watch feeds with sound muted, and digital screens / sto
 2. Do NOT rely on voiceover to explain the product. Every scene must make sense and compel action purely visually.
 ` : ""}
 
+CRITICAL GROUNDED MARKETING & FACTUAL ACCURACY DIRECTIVE:
+1. Never invent product features, pages, claims, specifications, testimonials, results, certifications, statistics, or customer outcomes.
+2. Marketing assets must be grounded in the uploaded or described product. AI-generated lifestyle scenes may be used for presentation, but the product itself must remain visually and factually faithful to the described source.
+3. Clearly distinguish factual product information from creative marketing suggestions and predictions.
+4. NEVER guarantee sales, conversion, ranking, or revenue.
+5. In objections and rebuttals, focus on factual onboarding clarity, transparent information, and product qualities rather than unsubstantiated claims.
+
 CRITICAL CONTEXT GUARD REQUIREMENT:
 You must strictly analyze and produce content exclusively for the user's ACTUAL product, niche, or topic described in the prompt (for example: Etsy dayplanners, meal planners, digital downloads, clothing, food, tech, posters, etc.). NEVER output skincare, dry skin, or cosmetic concepts unless the user explicitly requested skincare. Any unrelated topic violates the strict system intent guard.
 
@@ -1560,54 +1634,54 @@ Generate a complete, structured video project in JSON format matching this exact
       let sceneVisuals: Array<{ visual: string; text: string; voice: string; mood: string }> = [];
 
       if (isDayplanner) {
-        productTitle = isEtsy ? "Digital Dayplanner & Notatmal for 2026 på Etsy" : "Digital Dayplanner & Notatmal for 2026";
-        audience = "Studenter, gründere og travle yrkesaktive som ønsker full kontroll, struktur og mindre stress.";
+        productTitle = isEtsy ? "Digital Dayplanner på Etsy" : "Digital Dayplanner";
+        audience = "Studenter, gründere og yrkesaktive som ønsker struktur i hverdagen.";
         pains = [
-          "Kaos i hverdagen, uoversiktlige lister og glemte gjøremål",
-          "Følelsen av å ha for mye å gjøre uten en klar dagsplan",
-          "Dårlig tidsstyring og konstant prokrastinering"
+          "Uoversiktlige gjøremål og behov for struktur i hverdagen",
+          "Ønske om enklere dagsplanlegging og tidsstyring",
+          "Behov for en ryddig digital notatmal"
         ];
         usps = [
-          "Umiddelbar digital nedlasting på Etsy",
-          "Kompatibel med iPad, GoodNotes, Notability og utskrift",
-          "Over 200+ sider med estetiske maler for dagsmål, vaner og ukeplan"
+          isEtsy ? "Digital nedlasting tilgjengelig på Etsy" : "Digital nedlasting",
+          "Kompatibel med digitale notat-apper og utskrift",
+          "Strukturerte maler for planlegging og mål"
         ];
         hooks = [
-          "«Sliter du med kaos i hverdagen? Dette verktøyet endret alt for meg 📓✨»",
-          "«Slik planlegger jeg hele uken på under 10 minutter!»",
-          "«Den virale Etsy-dayplanneren som faktisk hjelper deg å nå målene dine.»"
+          "«Få bedre oversikt over uken med en ryddig planlegger 📓✨»",
+          "«Slik strukturerer jeg hverdagen min steg for steg.»",
+          "«Enkel og estetisk planlegger for dine daglige mål.»"
         ];
-        cta = isEtsy ? "Finn dayplanneren på Etsy nå – link i bio!" : "Sikre deg din dayplanner i dag – link i bio!";
-        offer = "25% lanseringsrabatt på Etsy denne uken";
+        cta = isEtsy ? "Finn planleggeren på Etsy nå – link i bio!" : "Se planleggeren i dag – link i bio!";
+        offer = "Introduksjonstilbud tilgjengelig nå";
         script = isEtsy
-          ? "Sliter du med kaos i hverdagen og for mange gjøremål? Med denne estetiske dayplanneren får du full kontroll over uken din på få minutter. Bygg gode vaner og nå målene dine. Finn den på Etsy nå – trykk på linken i bio!"
-          : "Sliter du med kaos i hverdagen og for mange gjøremål? Med denne estetiske dayplanneren får du full kontroll over uken din på få minutter. Bygg gode vaner og nå målene dine. Sikre deg din i dag – trykk på linken!";
+          ? "Ønsker du mer struktur i hverdagen? Med denne estetiske planleggeren får du god oversikt over oppgaver og gjøremål. Finn den på Etsy nå – trykk på linken i bio!"
+          : "Ønsker du mer struktur i hverdagen? Med denne estetiske planleggeren får du god oversikt over oppgaver og gjøremål. Se mer via linken!";
         sceneVisuals = [
           {
-            visual: "Messy, disorganized home office desk with scattered sticky notes and an overwhelmed person looking at a clock.",
-            text: "Kaos i hverdagen? 🛑",
-            voice: "Sliter du med kaos i hverdagen og for mange gjøremål?",
-            mood: "Problem & Attention Grabber"
+            visual: "Organized workspace desk with a person planning their daily tasks on a tablet.",
+            text: "Trenger du mer struktur? 📓",
+            voice: "Ønsker du mer struktur i hverdagen?",
+            mood: "Attention & Relevance"
           },
           {
-            visual: "Aesthetic clean tablet and printed dayplanner opened on a minimalist desk with coffee, showing beautiful daily scheduling layout.",
-            text: "Få full kontroll med Dayplanner 2026 ✨",
-            voice: "Med denne estetiske dayplanneren får du full kontroll over uken din på få minutter.",
-            mood: "Aesthetic Solution & Clarity"
+            visual: "Clean tablet display showing minimalist scheduling layout.",
+            text: "Få oversikt over uken ✨",
+            voice: "Med denne estetiske planleggeren får du god oversikt over oppgaver og gjøremål.",
+            mood: "Solution & Clarity"
           },
           {
-            visual: "Smiling creator calmly ticking off tasks in the planner with a fountain pen, peaceful organized atmosphere.",
-            text: "Mer overskudd & struktur 🎯",
-            voice: "Bygg gode vaner, spar tid og nå målene dine uten stress.",
-            mood: "Satisfaction & Flow"
+            visual: "Person checking off a planned task calmly in their digital journal.",
+            text: "Fokus og ro i hverdagen 🎯",
+            voice: "Gjør planleggingen enkel og oversiktlig.",
+            mood: "Simplicity & Focus"
           },
           {
             visual: isEtsy
-              ? "Smartphone screen showing Etsy store product page with 5-star badges, instant download badge, and bio link."
-              : "Modern smartphone screen showing quick direct order confirmation.",
-            text: isEtsy ? "FINN DEN PÅ ETSY NÅ 👆" : "BESTILL NÅ 👆",
-            voice: isEtsy ? "Finn den på Etsy nå – trykk på linken i bio!" : "Sikre deg din i dag – trykk på linken!",
-            mood: "Urgent Direct Call to Action"
+              ? "Smartphone screen showing Etsy store product page with bio link."
+              : "Modern smartphone screen showing clear product ordering page.",
+            text: isEtsy ? "FINN DEN PÅ ETSY NÅ 👆" : "SE TILBUDET HER 👆",
+            voice: isEtsy ? "Finn den på Etsy nå – trykk på linken i bio!" : "Se mer via linken!",
+            mood: "Direct Call to Action"
           }
         ];
       } else if (isFashion) {
@@ -1685,23 +1759,23 @@ Generate a complete, structured video project in JSON format matching this exact
           "Behov for en løsning som faktisk fungerer fra dag én"
         ];
         usps = [
-          "Rask og enkel levering",
-          "Testet og dokumentert kvalitet",
-          "100% fornøydgaranti for nye kunder"
+          "Tydelig presentasjon av produktets oppgitte kjernefordeler",
+          "Oversiktlig produktinformasjon",
+          "Enkel bestilling og rask tilgang"
         ];
         hooks = [
-          `«Leter du etter det beste innen ${productTitle}? Se dette først!»`,
-          "«Her er hemmeligheten som sparer deg både tid og penger ✨»",
-          "«Ikke bestill før du har sett dette tilbudet.»"
+          `«Se nærmere på ${productTitle} her!»`,
+          `«Her er nøkkeldetaljene om ${productTitle} ✨»`,
+          "«Få full oversikt over tilbudet i dag.»"
         ];
-        cta = isEtsy ? "Finn den på Etsy nå – link i bio!" : "Trykk på linken for å sikre deg din i dag!";
-        offer = "Spesialtilbud tilgjengelig i en begrenset periode";
-        script = `Leter du etter en bedre løsning for ${productTitle}? Vi leverer kvalitet, pålitelighet og synlige resultater som gjør hverdagen enklere. Sikre deg vårt introduksjonstilbud i dag. Trykk på linken for å bestille nå!`;
+        cta = isEtsy ? "Finn produktet på Etsy nå – link i bio!" : "Se mer og bestill via linken!";
+        offer = "Aktuelt tilbud tilgjengelig nå";
+        script = `Her er en nærmere titt på ${productTitle}. Vi presenterer produktets viktigste egenskaper og hvordan det kan passe for deg. Se mer og bestill via linken!`;
         sceneVisuals = [
-          { visual: `Visual representing the core problem and need for ${productTitle}, fast dynamic cut.`, text: `Trenger du ${productTitle.slice(0, 25)}? 🛑`, voice: `Leter du etter en bedre løsning for ${productTitle}?`, mood: "Hook & Attention" },
-          { visual: `High quality demonstration and presentation of ${productTitle} in use, clean aesthetic lighting.`, text: "Kvalitet som leverer ✨", voice: "Vi leverer kvalitet, pålitelighet og synlige resultater som gjør hverdagen enklere.", mood: "Solution & Proof" },
-          { visual: "Satisfied customer experiencing the positive transformation and benefit.", text: "TILBUD DETTE DØGNET 🎉", voice: "Sikre deg vårt introduksjonstilbud i dag.", mood: "Irresistible Offer" },
-          { visual: "Direct purchase or booking call to action badge on screen.", text: "BESTILL NÅ 👆", voice: "Trykk på linken for å bestille nå!", mood: "Call to Action" }
+          { visual: `Visual representing ${productTitle} in use, clean direct focus.`, text: `${productTitle.slice(0, 25)} 🌟`, voice: `Her er en nærmere titt på ${productTitle}.`, mood: "Hook & Product Focus" },
+          { visual: `High quality visual demonstration of ${productTitle}, faithful to the product attributes.`, text: "Produktoversikt ✨", voice: "Her ser du produktets viktigste egenskaper og detaljer.", mood: "Demonstration & Clarity" },
+          { visual: `Clean presentation of product package, pricing, or current offer.`, text: "TILBUD NÅ 🎉", voice: "Oppdag detaljene og se dagens tilbud.", mood: "Offer Presentation" },
+          { visual: "Direct purchase or information call to action banner on screen.", text: "SE MER HER 👆", voice: "Se mer og bestill via linken!", mood: "Call to Action" }
         ];
       }
 
@@ -1720,10 +1794,10 @@ Generate a complete, structured video project in JSON format matching this exact
           targetAudience: audience,
           customerPains: pains,
           objectionsAndRebuttals: [
-            { objection: "Er det verdt investeringen?", rebuttal: "Sparer deg tid og penger med dokumentert verdi fra første dag." },
-            { objection: "Er det vanskelig å komme i gang?", rebuttal: "Alt er lagt opp for umiddelbar og enkel bruk uten forkunnskaper." }
+            { objection: "Passer dette for mitt behov?", rebuttal: "Gjennomgå produktbeskrivelsen og spesifikasjonene for å se om egenskapene matcher dine krav." },
+            { objection: "Er det enkelt å komme i gang?", rebuttal: "Leveres med oversiktlig veiledning og oppsett tilpasset direkte bruk." }
           ],
-          uniqueValueProposition: `Den enkleste måten å oppnå resultater med ${productTitle}.`,
+          uniqueValueProposition: `Tydelig og strukturert oversikt over egenskapene ved ${productTitle}.`,
           uniqueSellingPoints: usps,
           scrollStoppingHooks: hooks,
           primaryCallToAction: cta,
@@ -1757,13 +1831,15 @@ Generate a complete, structured video project in JSON format matching this exact
           sceneNumber: idx + 1,
           durationSeconds: idx === 1 || idx === 2 ? 4.0 : 3.5,
           visualPrompt: sc.visual,
-          narrationVoiceover: sc.voice,
-          onScreenText: sc.text,
-          mood: sc.mood,
+          narrationVoiceover: isSoundOffRequested ? `[Lydløs reklame - visuelt budskap]: ${sc.text}` : sc.voice,
+          onScreenText: isSoundOffRequested ? `📢 ${sc.text.toUpperCase()}` : sc.text,
+          mood: isSoundOffRequested ? `${sc.mood} (Sound-Off Visual Focus)` : sc.mood,
           transition: (idx === 0 ? "zoom-in" : idx === 1 ? "dissolve" : idx === 2 ? "slide-left" : "fade") as any,
-          soundEffect: (idx === 0 ? "whoosh-hit" : idx === 1 ? "ambient-sparkle" : idx === 2 ? "chime-ding" : "pop-click")
+          soundEffect: isSoundOffRequested ? "none" : (idx === 0 ? "whoosh-hit" : idx === 1 ? "ambient-sparkle" : idx === 2 ? "chime-ding" : "pop-click")
         })),
-        musicGenre: isDayplanner ? "Lo-Fi Aesthetic Minimalist Study Beats" : isFashion ? "Modern Electronic Runway Trap" : "Upbeat Commercial Electronic",
+        isSoundOff: isSoundOffRequested,
+        audioMode: isSoundOffRequested ? "silent" : "standard",
+        musicGenre: isSoundOffRequested ? "Muted / Ingen Lydspor (Sound-Off)" : (isDayplanner ? "Lo-Fi Aesthetic Minimalist Study Beats" : isFashion ? "Modern Electronic Runway Trap" : "Upbeat Commercial Electronic"),
         musicDuckingPercent: 75,
         logoPosition: "top-right" as any,
       };

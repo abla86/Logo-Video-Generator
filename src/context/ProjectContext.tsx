@@ -13,6 +13,9 @@ import {
   SalesCopilotData,
   CampaignVariant,
   OmnichannelPackage,
+  ProjectBrief,
+  StudioProjectRecord,
+  BrandMusicTrack,
 } from "../types";
 
 const LOCAL_STORAGE_KEY = "brandforge_central_project_context";
@@ -24,16 +27,12 @@ const DEFAULT_APPROVED_DELIVERABLES: ApprovedDeliverables = {
     "4:5": true,
     "9:16": true,
     "16:9": true,
-    "etsy-shop": true,
-    "etsy-mockup": true,
   },
   slides: {
     0: true,
     1: true,
     2: true,
     3: true,
-    4: true,
-    5: true,
   },
   variants: {
     var_1: true,
@@ -42,14 +41,33 @@ const DEFAULT_APPROVED_DELIVERABLES: ApprovedDeliverables = {
   },
 };
 
+const DEFAULT_BRIEF: ProjectBrief = {
+  id: `brief_${Date.now()}`,
+  name: "Ny Kampanje",
+  productOrService: "",
+  companyName: "Mitt Varemerke",
+  industry: "Generelt",
+  targetAudience: "",
+  uniqueValueProposition: "",
+  brandPersonality: "Moderne og troverdig",
+  preferredStyle: "Moderne Minimalistisk",
+  colorPalette: ["#FF3B00", "#111111", "#FFFFFF"],
+  language: "no",
+  createdAt: Date.now(),
+  updatedAt: Date.now(),
+};
+
 const DEFAULT_STATE: CentralizedProjectState = {
-  companyName: "BrandForge Labs",
+  projectBrief: DEFAULT_BRIEF,
+  companyName: "Mitt Varemerke",
   brandLogoUrl: undefined,
-  productOrService: "Digital Dayplanner & Notatmaler for Etsy",
-  industry: "Digitale Produkter & Produktivitet",
-  targetAudience: "Studenter, travle gründere og yrkesaktive som vil ha kontroll på hverdagen",
-  uniqueValueProposition: "Alt-i-ett estetisk dagsplanlegger for GoodNotes og print som gir ro og struktur på 5 minutter.",
-  selectedStrategyKey: "etsy-dayplanner",
+  productOrService: "",
+  industry: "Generelt",
+  targetAudience: "",
+  uniqueValueProposition: "",
+  selectedStrategyKey: "custom",
+  brandPalette: ["#FF3B00", "#111111", "#FFFFFF"],
+  soundtrack: null,
   activeProject: null,
   renderedVideoUrl: null,
   validationReport: null,
@@ -72,6 +90,10 @@ export const ProjectContextProvider: React.FC<{ children: React.ReactNode }> = (
         return {
           ...DEFAULT_STATE,
           ...parsed,
+          projectBrief: {
+            ...DEFAULT_BRIEF,
+            ...(parsed.projectBrief || {}),
+          },
           approvedDeliverables: {
             ...DEFAULT_APPROVED_DELIVERABLES,
             ...(parsed.approvedDeliverables || {}),
@@ -93,10 +115,36 @@ export const ProjectContextProvider: React.FC<{ children: React.ReactNode }> = (
     }
   }, [state]);
 
+  const updateProjectBrief = (partial: Partial<ProjectBrief>) => {
+    setState((prev) => {
+      const updatedBrief: ProjectBrief = {
+        ...prev.projectBrief,
+        ...partial,
+        updatedAt: Date.now(),
+      };
+      return {
+        ...prev,
+        projectBrief: updatedBrief,
+        companyName: partial.companyName !== undefined ? partial.companyName : prev.companyName,
+        productOrService: partial.productOrService !== undefined ? partial.productOrService : prev.productOrService,
+        industry: partial.industry !== undefined ? partial.industry : prev.industry,
+        targetAudience: partial.targetAudience !== undefined ? partial.targetAudience : prev.targetAudience,
+        uniqueValueProposition: partial.uniqueValueProposition !== undefined ? partial.uniqueValueProposition : prev.uniqueValueProposition,
+        brandPalette: partial.colorPalette !== undefined ? partial.colorPalette : prev.brandPalette,
+        lastUpdated: Date.now(),
+      };
+    });
+  };
+
   const setCompanyName = (name: string) => {
     setState((prev) => ({
       ...prev,
       companyName: name,
+      projectBrief: {
+        ...prev.projectBrief,
+        companyName: name,
+        updatedAt: Date.now(),
+      },
       lastUpdated: Date.now(),
     }));
   };
@@ -109,20 +157,55 @@ export const ProjectContextProvider: React.FC<{ children: React.ReactNode }> = (
     }));
   };
 
+  const setBrandPalette = (palette: string[]) => {
+    setState((prev) => ({
+      ...prev,
+      brandPalette: palette,
+      projectBrief: {
+        ...prev.projectBrief,
+        colorPalette: palette,
+        updatedAt: Date.now(),
+      },
+      lastUpdated: Date.now(),
+    }));
+  };
+
+  const setSoundtrack = (track: BrandMusicTrack | null) => {
+    setState((prev) => ({
+      ...prev,
+      soundtrack: track,
+      lastUpdated: Date.now(),
+    }));
+  };
+
   const setProductContext = (info: {
     productOrService: string;
     targetAudience?: string;
     uniqueValueProposition?: string;
     industry?: string;
   }) => {
-    setState((prev) => ({
-      ...prev,
-      productOrService: info.productOrService || prev.productOrService,
-      targetAudience: info.targetAudience ?? prev.targetAudience,
-      uniqueValueProposition: info.uniqueValueProposition ?? prev.uniqueValueProposition,
-      industry: info.industry ?? prev.industry,
-      lastUpdated: Date.now(),
-    }));
+    setState((prev) => {
+      const p = info.productOrService || prev.productOrService;
+      const aud = info.targetAudience ?? prev.targetAudience;
+      const uvp = info.uniqueValueProposition ?? prev.uniqueValueProposition;
+      const ind = info.industry ?? prev.industry;
+      return {
+        ...prev,
+        productOrService: p,
+        targetAudience: aud,
+        uniqueValueProposition: uvp,
+        industry: ind,
+        projectBrief: {
+          ...prev.projectBrief,
+          productOrService: p,
+          targetAudience: aud,
+          uniqueValueProposition: uvp,
+          industry: ind,
+          updatedAt: Date.now(),
+        },
+        lastUpdated: Date.now(),
+      };
+    });
   };
 
   const setActiveProject = (project: AutonomousVideoProject | null) => {
@@ -269,10 +352,8 @@ export const ProjectContextProvider: React.FC<{ children: React.ReactNode }> = (
             "4:5": true,
             "9:16": true,
             "16:9": true,
-            "etsy-shop": true,
-            "etsy-mockup": true,
           },
-          slides: { 0: true, 1: true, 2: true, 3: true, 4: true, 5: true },
+          slides: { 0: true, 1: true, 2: true, 3: true },
           variants: { ...prev.approvedDeliverables.variants, ...allVars },
         },
         lastUpdated: Date.now(),
@@ -287,12 +368,50 @@ export const ProjectContextProvider: React.FC<{ children: React.ReactNode }> = (
     });
   };
 
+  const loadProjectRecord = (record: StudioProjectRecord) => {
+    setState((prev) => ({
+      ...prev,
+      projectBrief: record.brief,
+      companyName: record.brief.companyName || prev.companyName,
+      productOrService: record.brief.productOrService || "",
+      industry: record.brief.industry || "Generelt",
+      targetAudience: record.brief.targetAudience || "",
+      uniqueValueProposition: record.brief.uniqueValueProposition || "",
+      brandLogoUrl: record.brandLogoUrl,
+      renderedVideoUrl: record.renderedVideoUrl || null,
+      validationReport: record.validationReport || null,
+      activeProject: record.activeProject,
+      brandPalette: record.palette || record.brief.colorPalette || prev.brandPalette,
+      soundtrack: record.soundtrack || null,
+      lastUpdated: Date.now(),
+    }));
+  };
+
+  const getProjectRecord = (): StudioProjectRecord => {
+    return {
+      id: state.projectBrief.id || `proj_${Date.now()}`,
+      name: state.projectBrief.name || state.projectBrief.productOrService || "BrandForge Prosjekt",
+      createdAt: state.projectBrief.createdAt || Date.now(),
+      updatedAt: Date.now(),
+      brief: state.projectBrief,
+      activeProject: state.activeProject,
+      brandLogoUrl: state.brandLogoUrl,
+      renderedVideoUrl: state.renderedVideoUrl || undefined,
+      validationReport: state.validationReport,
+      palette: state.brandPalette,
+      soundtrack: state.soundtrack,
+    };
+  };
+
   return (
     <ProjectContext.Provider
       value={{
         ...state,
+        updateProjectBrief,
         setCompanyName,
         setBrandLogoUrl,
+        setBrandPalette,
+        setSoundtrack,
         setProductContext,
         setActiveProject,
         setRenderedVideoUrl,
@@ -307,6 +426,8 @@ export const ProjectContextProvider: React.FC<{ children: React.ReactNode }> = (
         setVideoApproved,
         approveAllDeliverables,
         resetProjectContext,
+        loadProjectRecord,
+        getProjectRecord,
       }}
     >
       {children}

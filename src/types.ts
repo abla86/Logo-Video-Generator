@@ -7,14 +7,47 @@ export type CostMode = "free-local" | "quota-free" | "user-key" | "premium-cloud
 export interface CostTelemetry {
   dailyTokensUsed: number;
   monthlyTokensUsed: number;
-  dailySpendUSD: number;
-  monthlySpendUSD: number;
+  estimatedSpendUSD: number;
+  providerReportedSpendUSD: number;
   dailyLimitUSD: number;
   monthlyLimitUSD: number;
   isFreeLocalMode: boolean;
   zeroCostFilter: boolean;
   cacheHits: number;
   totalJobsProcessed: number;
+  isEstimated: boolean;
+}
+
+export interface ProjectBrief {
+  id: string;
+  name: string;
+  productOrService: string;
+  companyName: string;
+  industry?: string;
+  targetAudience?: string;
+  uniqueValueProposition?: string;
+  brandPersonality?: string;
+  preferredStyle?: string;
+  colorPalette?: string[];
+  language: "no" | "en";
+  uploadedProductImage?: string;
+  isSoundOffMode?: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface StudioProjectRecord {
+  id: string;
+  name: string;
+  createdAt: number;
+  updatedAt: number;
+  brief: ProjectBrief;
+  activeProject: AutonomousVideoProject | null;
+  brandLogoUrl?: string;
+  renderedVideoUrl?: string;
+  validationReport?: VideoValidationReport | null;
+  palette?: string[];
+  soundtrack?: BrandMusicTrack | null;
 }
 
 export interface LogoRequest {
@@ -246,6 +279,8 @@ export interface AutonomousVideoProject {
   musicDuckingPercent: number; // e.g. 75% reduction when voiceover plays
   brandLogoUrl?: string;
   logoPosition: "top-left" | "top-right" | "bottom-left" | "bottom-right" | "outro";
+  isSoundOff?: boolean;
+  audioMode?: "silent" | "none" | "standard";
   renderedVideoUrl?: string;
   renderedVideoFormat?: "mp4" | "webm";
   validation?: VideoValidationReport;
@@ -575,6 +610,9 @@ export interface ApprovedDeliverables {
 }
 
 export interface CentralizedProjectState {
+  // Central Project Brief (Single Source of Truth)
+  projectBrief: ProjectBrief;
+
   // Brand & Business Identity
   companyName: string;
   brandLogoUrl?: string;
@@ -583,6 +621,8 @@ export interface CentralizedProjectState {
   targetAudience: string;
   uniqueValueProposition: string;
   selectedStrategyKey: string;
+  brandPalette?: string[];
+  soundtrack?: BrandMusicTrack | null;
 
   // Active Video Project & Rendered Outputs
   activeProject: AutonomousVideoProject | null;
@@ -603,8 +643,11 @@ export interface CentralizedProjectState {
 }
 
 export interface ProjectContextType extends CentralizedProjectState {
+  updateProjectBrief: (partial: Partial<ProjectBrief>) => void;
   setCompanyName: (name: string) => void;
   setBrandLogoUrl: (url?: string) => void;
+  setBrandPalette: (palette: string[]) => void;
+  setSoundtrack: (track: BrandMusicTrack | null) => void;
   setProductContext: (info: {
     productOrService: string;
     targetAudience?: string;
@@ -626,5 +669,7 @@ export interface ProjectContextType extends CentralizedProjectState {
   setVideoApproved: (approved: boolean) => void;
   approveAllDeliverables: () => void;
   resetProjectContext: () => void;
+  loadProjectRecord: (record: StudioProjectRecord) => void;
+  getProjectRecord: () => StudioProjectRecord;
 }
 

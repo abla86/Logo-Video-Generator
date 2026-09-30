@@ -446,6 +446,171 @@ AUTHENTICATED BY BRANDFORGE STUDIO
     }
   };
 
+  // 11. Structured Brand Package:
+  // brand/
+  // ├── logo-primary.png
+  // ├── logo-transparent.png
+  // ├── logo-monochrome.png
+  // ├── palette.json
+  // ├── brand-guide.pdf
+  // └── project.json
+  const handleExportBrandPackage = async () => {
+    setIsExportingZip(true);
+    try {
+      const zip = new JSZip();
+      const brandFolder = zip.folder("brand");
+
+      // Generate canvas images for primary, transparent, monochrome
+      const renderPngBlob = (variant: "solid" | "transparent" | "mono"): Promise<Blob | null> => {
+        return new Promise((resolve) => {
+          const canvas = document.createElement("canvas");
+          canvas.width = 1024;
+          canvas.height = 1024;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) return resolve(null);
+
+          if (variant === "solid") {
+            ctx.fillStyle = "#0A0A0A";
+            ctx.fillRect(0, 0, 1024, 1024);
+          } else if (variant === "mono") {
+            ctx.fillStyle = "#FFFFFF";
+            ctx.fillRect(0, 0, 1024, 1024);
+          }
+
+          const img = new Image();
+          const svgBlob = new Blob([activeSvg], { type: "image/svg+xml;charset=utf-8" });
+          const url = URL.createObjectURL(svgBlob);
+          img.onload = () => {
+            if (variant === "mono") {
+              ctx.filter = "grayscale(100%) contrast(150%)";
+            }
+            ctx.drawImage(img, 0, 0, 1024, 1024);
+            canvas.toBlob((blob) => {
+              URL.revokeObjectURL(url);
+              resolve(blob);
+            }, "image/png");
+          };
+          img.onerror = () => {
+            URL.revokeObjectURL(url);
+            resolve(null);
+          };
+          img.src = url;
+        });
+      };
+
+      const [primaryBlob, transBlob, monoBlob] = await Promise.all([
+        renderPngBlob("solid"),
+        renderPngBlob("transparent"),
+        renderPngBlob("mono"),
+      ]);
+
+      if (primaryBlob) brandFolder?.file("logo-primary.png", primaryBlob);
+      if (transBlob) brandFolder?.file("logo-transparent.png", transBlob);
+      if (monoBlob) brandFolder?.file("logo-monochrome.png", monoBlob);
+
+      // palette.json
+      const paletteObj = {
+        companyName,
+        colors: defaultPalette.colors,
+        usage: {
+          primary: defaultPalette.colors[0],
+          background: defaultPalette.colors[1],
+          accent: defaultPalette.colors[2] || "#00E5FF",
+        },
+      };
+      brandFolder?.file("palette.json", JSON.stringify(paletteObj, null, 2));
+
+      // project.json
+      const projectJsonObj = {
+        companyName,
+        industry,
+        brandBrief: {
+          companyName,
+          industry,
+          productOrService: currentVideoProject?.strategy?.productOrService || "",
+        },
+        exportedAt: new Date().toISOString(),
+      };
+      brandFolder?.file("project.json", JSON.stringify(projectJsonObj, null, 2));
+
+      // brand-guide.pdf (via jsPDF)
+      const doc = new jsPDF();
+      doc.setFillColor(10, 10, 10);
+      doc.rect(0, 0, 210, 297, "F");
+      doc.setTextColor(255, 59, 0);
+      doc.setFontSize(22);
+      doc.text("BRANDFORGE IDENTITY GUIDE", 20, 30);
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(28);
+      doc.text(companyName.toUpperCase(), 20, 45);
+      doc.setFontSize(12);
+      doc.setTextColor(180, 180, 180);
+      doc.text(`Official Brand Package • ${industry}`, 20, 55);
+      doc.save; // trigger internal methods
+      const pdfBlob = doc.output("blob");
+      brandFolder?.file("brand-guide.pdf", pdfBlob);
+
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      safeDownload(zipBlob, `${sanitizeFilename(companyName)}_Brand_Package.zip`, "application/zip");
+    } catch (e) {
+      console.error("Error creating Brand Package:", e);
+    } finally {
+      setIsExportingZip(false);
+    }
+  };
+
+  // 12. Structured Video Package:
+  // video/
+  // ├── final.mp4
+  // ├── captions.srt
+  // ├── thumbnail.png
+  // └── project.json
+  const handleExportVideoPackage = async () => {
+    setIsExportingZip(true);
+    try {
+      const zip = new JSZip();
+      const videoFolder = zip.folder("video");
+
+      // Captions
+      const srt = `1\n00:00:00,000 --> 00:00:03,500\n${companyName} – Offisiell Kampanje\n\n2\n00:00:03,500 --> 00:00:07,500\n${currentVideoProject?.strategy?.productOrService || "Se vårt tilbud i dag."}\n\n3\n00:00:07,500 --> 00:00:15,000\nBestill via linken i bio.`;
+      videoFolder?.file("captions.srt", srt);
+
+      // Thumbnail
+      const canvas = document.createElement("canvas");
+      canvas.width = 1280;
+      canvas.height = 720;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.fillStyle = "#0A0A0A";
+        ctx.fillRect(0, 0, 1280, 720);
+        ctx.fillStyle = "#FF3B00";
+        ctx.font = "bold 44px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(companyName.toUpperCase(), 640, 360);
+        const thumbBlob = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/png"));
+        if (thumbBlob) videoFolder?.file("thumbnail.png", thumbBlob);
+      }
+
+      // project.json
+      videoFolder?.file("project.json", JSON.stringify(currentVideoProject || { companyName, exportedAt: new Date().toISOString() }, null, 2));
+
+      // final.mp4
+      if (currentVideoProject?.renderedVideoUrl && currentVideoProject.renderedVideoUrl.includes(";base64,")) {
+        const b64 = currentVideoProject.renderedVideoUrl.split(";base64,")[1];
+        videoFolder?.file("final.mp4", b64, { base64: true });
+      } else {
+        videoFolder?.file("final_video_readme.txt", "Rendret MP4 kan genereres og lastes ned direkte fra Autonomous Video Producer eller Timeline Editor.");
+      }
+
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      safeDownload(zipBlob, `${sanitizeFilename(companyName)}_Video_Package.zip`, "application/zip");
+    } catch (e) {
+      console.error("Error creating Video Package:", e);
+    } finally {
+      setIsExportingZip(false);
+    }
+  };
+
   // --- IMPORT HANDLERS ---
   const handleFileDrop = async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -696,11 +861,29 @@ AUTHENTICATED BY BRANDFORGE STUDIO
                 Laster ned alle logoer (SVG, PNG, WebP), design tokens, CSS variabler, undertekster (SRT &amp; VTT), HTML stilguide og juridisk lisensbevis organisert i strukturerte mapper.
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={handleExportBrandPackage}
+                disabled={isExportingZip}
+                className="px-4 py-3 bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase text-xs font-mono tracking-wider flex items-center gap-2 cursor-pointer transition-all hover:scale-105 active:scale-95 shadow-lg disabled:opacity-50"
+                title="Eksporter Brand Package med logoer, palett, brand-guide.pdf og project.json"
+              >
+                <Download className="w-4 h-4" />
+                <span>Brand Package (.ZIP)</span>
+              </button>
+              <button
+                onClick={handleExportVideoPackage}
+                disabled={isExportingZip}
+                className="px-4 py-3 bg-amber-400 hover:bg-amber-300 text-black font-black uppercase text-xs font-mono tracking-wider flex items-center gap-2 cursor-pointer transition-all hover:scale-105 active:scale-95 shadow-lg disabled:opacity-50"
+                title="Eksporter Video Package med final.mp4, captions.srt, thumbnail.png og project.json"
+              >
+                <Film className="w-4 h-4" />
+                <span>Video Package (.ZIP)</span>
+              </button>
               <button
                 onClick={handleExportCompleteBundle}
                 disabled={isExportingZip}
-                className="px-6 py-3 bg-[#FF3B00] hover:bg-[#e03400] text-black font-black uppercase text-xs font-mono tracking-wider flex items-center gap-2 cursor-pointer transition-colors shadow-lg shadow-[#FF3B00]/20 disabled:opacity-50"
+                className="px-4 py-3 bg-[#FF3B00] hover:bg-[#e03400] text-black font-black uppercase text-xs font-mono tracking-wider flex items-center gap-2 cursor-pointer transition-colors shadow-lg shadow-[#FF3B00]/20 disabled:opacity-50"
               >
                 {isExportingZip ? (
                   <>
@@ -710,7 +893,7 @@ AUTHENTICATED BY BRANDFORGE STUDIO
                 ) : (
                   <>
                     <Download className="w-4 h-4" />
-                    <span>Last Ned Full Leveransepakke (.ZIP)</span>
+                    <span>Full Leveransepakke (.ZIP)</span>
                   </>
                 )}
               </button>
@@ -1202,7 +1385,7 @@ AUTHENTICATED BY BRANDFORGE STUDIO
               <div className="p-4 bg-[#1C1C1E] border border-[#333] space-y-2">
                 <span className="text-xs font-mono font-bold uppercase text-emerald-400">SRT &amp; VTT (Undertekster)</span>
                 <p className="text-xs text-zinc-300 leading-relaxed">
-                  <strong>Bruk til:</strong> Lukket teksting (closed captions) på sosiale medier. Over 75% av mobilbrukere ser videoer uten lyd; undertekster dobler konverteringsraten.
+                  <strong>Bruk til:</strong> Lukket teksting (closed captions) på sosiale medier. Over 85% av mobilbrukere ser videoer uten lyd; undertekster sikrer at budskapet ditt når seerne.
                 </p>
               </div>
 

@@ -402,6 +402,8 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
         setRenderProgress((prev) => Math.min(90, prev + 15));
       }, 350);
 
+      const isAudioMuted = tracks.filter((t) => t.type === "music" || t.type === "voiceover").every((t) => t.muted);
+
       const res = await fetch("/api/render-video", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -419,6 +421,8 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({
           resolution: "720p",
           commercialLicense: true,
           fps: 30,
+          audioMode: isAudioMuted ? "none" : "silent",
+          isSoundOff: isAudioMuted,
         }),
       });
 
